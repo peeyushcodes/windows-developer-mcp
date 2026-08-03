@@ -40,7 +40,7 @@ require_confirmation = true
 
 # Maximum number of characters returned in a single tool response.
 # Protects against massive stdout flooding the context window.
-max_output_length = 50000
+max_output_length = 6000
 
 # Additional commands to block beyond the built-in dangerous list.
 # Uses Python re.search() pattern matching (case-insensitive).
