@@ -66,7 +66,7 @@ A production-grade **Model Context Protocol (MCP)** server for Windows developer
 
 ### 1. Clone & Setup Virtual Environment
 ```powershell
-git clone https://github.com/your-org/windows-developer-mcp.git
+git clone https://github.com/peeyushcodes/windows-developer-mcp.git
 cd windows-developer-mcp
 
 # Create virtual environment

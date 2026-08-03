@@ -40,10 +40,10 @@ dev = [
 windows-developer-mcp = "server:main"
 
 [project.urls]
-Homepage = "https://github.com/your-org/windows-developer-mcp"
-Repository = "https://github.com/your-org/windows-developer-mcp"
-Issues = "https://github.com/your-org/windows-developer-mcp/issues"
-Changelog = "https://github.com/your-org/windows-developer-mcp/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/peeyushcodes/windows-developer-mcp"
+Repository = "https://github.com/peeyushcodes/windows-developer-mcp"
+Issues = "https://github.com/peeyushcodes/windows-developer-mcp/issues"
+Changelog = "https://github.com/peeyushcodes/windows-developer-mcp/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
