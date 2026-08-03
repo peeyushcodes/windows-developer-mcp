@@ -1,0 +1,139 @@
+[project]
+name = "windows-developer-mcp"
+version = "0.1.0"
+description = "A production-grade Windows Developer MCP Server for LM Studio and other MCP-compatible AI clients"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+authors = [{ name = "Windows Developer MCP Contributors" }]
+keywords = ["mcp", "windows", "developer", "ai", "llm", "fastmcp", "lm-studio"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "fastmcp>=2.0.0",
+    "pydantic>=2.7.0",
+    "psutil>=6.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.14.0",
+    "ruff>=0.5.0",
+    "basedpyright>=1.18.0",
+]
+
+[project.scripts]
+windows-developer-mcp = "server:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/windows-developer-mcp"
+Repository = "https://github.com/your-org/windows-developer-mcp"
+Issues = "https://github.com/your-org/windows-developer-mcp/issues"
+Changelog = "https://github.com/your-org/windows-developer-mcp/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "providers", "security", "utils", "server.py"]
+
+# ==============================================================================
+# Ruff — Linter + Formatter
+# ==============================================================================
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "RUF", # ruff-specific rules
+    "PTH", # flake8-use-pathlib
+    "G",   # flake8-logging-format
+    "LOG", # flake8-logging
+]
+ignore = [
+    "E501",    # line too long — handled by formatter
+    "B008",    # do not perform function calls in default arguments
+    "RUF002",  # ambiguous unicode character in docstrings
+    "PTH123",  # open() instead of Path.open()
+    "UP047",   # generic function type parameters
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "providers", "security", "utils"]
+force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "SIM117"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+# ==============================================================================
+# Basedpyright — Type Checker
+# ==============================================================================
+
+[tool.basedpyright]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+include = ["core", "providers", "security", "utils", "server.py", "tests"]
+exclude = [".venv", "__pycache__", "*.pyc"]
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportPrivateUsage = "warning"
+
+# ==============================================================================
+# Pytest
+# ==============================================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = ["-v", "--tb=short", "--strict-markers"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests that require external services",
+    "windows_only: marks tests that only run on Windows",
+]
+
+[tool.coverage.run]
+source = ["core", "providers", "security", "utils"]
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]

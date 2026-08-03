@@ -1,0 +1,107 @@
+# ==============================================================================
+# Python
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.virtualenv/
+
+# uv
+.uv/
+uv.lock
+
+# ==============================================================================
+# Testing & Coverage
+# ==============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+nosetests.xml
+pytest.xml
+
+# ==============================================================================
+# Linting & Type Checking
+# ==============================================================================
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.basedpyright/
+pyrightconfig.json
+
+# ==============================================================================
+# IDE & Editors
+# ==============================================================================
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ==============================================================================
+# Windows Developer MCP — Runtime Files
+# ==============================================================================
+
+# Audit logs (generated at runtime)
+logs/
+*.log
+*.log.*
+
+# Local config overrides (never commit secrets)
+config.local.toml
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ==============================================================================
+# Windows
+# ==============================================================================
+$RECYCLE.BIN/
+desktop.ini
+ehthumbs.db
+Thumbs.db
+*.lnk

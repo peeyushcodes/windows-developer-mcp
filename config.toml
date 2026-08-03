@@ -1,0 +1,87 @@
+# Windows Developer MCP — Configuration
+# All values shown are defaults. Override as needed.
+
+# ==============================================================================
+# Server
+# ==============================================================================
+
+[server]
+name = "Windows Developer MCP"
+version = "0.1.0"
+
+# ==============================================================================
+# Workspace
+# ==============================================================================
+
+[workspace]
+# Root directory for all file operations. "." means the directory from which
+# the server is launched. Use an absolute path to lock to a specific location.
+path = "."
+
+# If non-empty, file operations are further restricted to these subdirectories
+# (relative to workspace.path). Leave empty to allow access to the entire workspace.
+allowed_directories = []
+
+# When true, all write/delete/execute operations are blocked.
+# The server becomes a read-only inspection tool.
+read_only = false
+
+# ==============================================================================
+# Security
+# ==============================================================================
+
+[security]
+# Seconds before a command is forcefully terminated.
+timeout = 60
+
+# If true, destructive commands (delete, format, etc.) require
+# an explicit "confirm = true" parameter before execution.
+require_confirmation = true
+
+# Maximum number of characters returned in a single tool response.
+# Protects against massive stdout flooding the context window.
+max_output_length = 50000
+
+# Additional commands to block beyond the built-in dangerous list.
+# Uses Python re.search() pattern matching (case-insensitive).
+extra_blocked_patterns = []
+
+# If non-empty, ONLY these command prefixes are allowed.
+# Acts as an explicit allowlist. Leave empty to use the default blocklist.
+command_allowlist = []
+
+# ==============================================================================
+# Logging
+# ==============================================================================
+
+[logging]
+# Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+level = "INFO"
+
+# Directory where audit logs are written (relative to workspace root).
+log_dir = "logs"
+
+# Maximum size of a single log file in megabytes before rotation.
+max_log_size_mb = 10
+
+# Number of rotated backup log files to retain.
+backup_count = 5
+
+# ==============================================================================
+# Providers
+# ==============================================================================
+# Set any provider to false to disable it entirely at startup.
+
+[providers]
+terminal   = true
+filesystem = true
+git        = true
+python     = true
+node       = true
+docker     = true
+windows    = true
+network    = true
+sqlite     = true
+project    = true
+github     = true
+browser    = true
