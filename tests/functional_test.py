@@ -1,6 +1,6 @@
 import sys
 
-sys.path.insert(0, '.')
+sys.path.insert(0, ".")
 
 from pathlib import Path
 
@@ -56,27 +56,54 @@ print("python.check_package fastmcp: installed=" + str(result["data"]["installed
 # Filesystem tests
 fp = FilesystemProvider()
 result = fp.list_directory(".")
-print("filesystem.list_directory:", result["status"], "count:", result.get("data", {}).get("count", "N/A"))
+print(
+    "filesystem.list_directory:",
+    result["status"],
+    "count:",
+    result.get("data", {}).get("count", "N/A"),
+)
 
 result = fp.file_exists("server.py")
 print("filesystem.file_exists server.py:", result["data"]["exists"])
 
 result = fp.read_file("config.toml")
-print("filesystem.read_file config.toml:", result["status"], "lines:", result.get("data", {}).get("lines", "N/A"))
+print(
+    "filesystem.read_file config.toml:",
+    result["status"],
+    "lines:",
+    result.get("data", {}).get("lines", "N/A"),
+)
 
 result = fp.tree(".", max_depth=2)
-print("filesystem.tree:", result["status"], "files:", result.get("data", {}).get("file_count", "N/A"))
+print(
+    "filesystem.tree:", result["status"], "files:", result.get("data", {}).get("file_count", "N/A")
+)
 
 result = fp.search_files(".", pattern="*.py")
-print("filesystem.search_files *.py:", result["status"], "found:", result.get("data", {}).get("count", "N/A"))
+print(
+    "filesystem.search_files *.py:",
+    result["status"],
+    "found:",
+    result.get("data", {}).get("count", "N/A"),
+)
 
 # Browser tests
 bp = BrowserProvider()
 result = bp.check_url("https://httpbin.org/get")
-print("browser.check_url httpbin.org:", result["status"], "status_code:", result.get("data", {}).get("status_code", "N/A"))
+print(
+    "browser.check_url httpbin.org:",
+    result["status"],
+    "status_code:",
+    result.get("data", {}).get("status_code", "N/A"),
+)
 
 result = bp.extract_text("https://httpbin.org/html")
-print("browser.extract_text httpbin.org:", result["status"], "title:", result.get("data", {}).get("title", "N/A"))
+print(
+    "browser.extract_text httpbin.org:",
+    result["status"],
+    "title:",
+    result.get("data", {}).get("title", "N/A"),
+)
 
 # Security tests
 print()

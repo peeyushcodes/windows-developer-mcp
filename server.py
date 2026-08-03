@@ -71,7 +71,7 @@ def create_app() -> FastMCP:
     logger.info("Windows Developer MCP v%s", cfg.server.version)
     logger.info("Workspace: %s", cfg.workspace.resolved_path)
     logger.info("Read-only: %s", cfg.workspace.read_only)
-    logger.info("Timeout:   %ds", cfg.security.timeout)
+    logger.info("Profile:   %s", cfg.server.profile.value)
     logger.info("=" * 60)
 
     # -----------------------------------------------------------------------
@@ -90,24 +90,24 @@ def create_app() -> FastMCP:
     # -----------------------------------------------------------------------
     # Provider Registry
     # -----------------------------------------------------------------------
-    registry = ProviderRegistry()
+    registry = ProviderRegistry(profile=cfg.server.profile)
 
     # Import providers lazily to avoid circular imports and to give the
     # config/logging system time to initialise before providers load.
     # Each import is wrapped so a broken provider never crashes the server.
 
-    _safe_register(registry, "terminal",   "providers.terminal",   "TerminalProvider")
+    _safe_register(registry, "terminal", "providers.terminal", "TerminalProvider")
     _safe_register(registry, "filesystem", "providers.filesystem", "FilesystemProvider")
-    _safe_register(registry, "git",        "providers.git",        "GitProvider")
-    _safe_register(registry, "python",     "providers.python",     "PythonProvider")
-    _safe_register(registry, "node",       "providers.node",       "NodeProvider")
-    _safe_register(registry, "docker",     "providers.docker",     "DockerProvider")
-    _safe_register(registry, "windows",    "providers.windows",    "WindowsProvider")
-    _safe_register(registry, "network",    "providers.network",    "NetworkProvider")
-    _safe_register(registry, "sqlite",     "providers.sqlite",     "SQLiteProvider")
-    _safe_register(registry, "project",    "providers.project",    "ProjectProvider")
-    _safe_register(registry, "github",     "providers.github",     "GitHubProvider")
-    _safe_register(registry, "browser",    "providers.browser",    "BrowserProvider")
+    _safe_register(registry, "git", "providers.git", "GitProvider")
+    _safe_register(registry, "python", "providers.python", "PythonProvider")
+    _safe_register(registry, "node", "providers.node", "NodeProvider")
+    _safe_register(registry, "docker", "providers.docker", "DockerProvider")
+    _safe_register(registry, "windows", "providers.windows", "WindowsProvider")
+    _safe_register(registry, "network", "providers.network", "NetworkProvider")
+    _safe_register(registry, "sqlite", "providers.sqlite", "SQLiteProvider")
+    _safe_register(registry, "project", "providers.project", "ProjectProvider")
+    _safe_register(registry, "github", "providers.github", "GitHubProvider")
+    _safe_register(registry, "browser", "providers.browser", "BrowserProvider")
 
     # Register all discovered tools with the FastMCP app.
     summary = registry.register_all(mcp)
@@ -137,6 +137,7 @@ def _safe_register(
     """
     try:
         import importlib
+
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
         registry.register(cls())
@@ -144,12 +145,15 @@ def _safe_register(
     except ImportError as exc:
         logger.warning(
             "Could not import provider %r from %s: %s — skipping.",
-            provider_name, module_path, exc,
+            provider_name,
+            module_path,
+            exc,
         )
     except Exception as exc:
         logger.error(
             "Failed to register provider %r: %s — skipping.",
-            provider_name, exc,
+            provider_name,
+            exc,
         )
 
 

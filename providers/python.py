@@ -41,6 +41,7 @@ class PythonProvider(BaseProvider):
     def _python_cmd(self) -> str:
         """Return the Python executable to use (venv-aware)."""
         from core.session import get_session
+
         session = get_session()
         venv = session.active_venv
         if venv is not None:
@@ -52,6 +53,7 @@ class PythonProvider(BaseProvider):
     def _pip_cmd(self) -> str:
         """Return the pip executable to use (venv-aware)."""
         from core.session import get_session
+
         session = get_session()
         venv = session.active_venv
         if venv is not None:
@@ -75,9 +77,7 @@ class PythonProvider(BaseProvider):
         Examples:
             python_version()
         """
-        result = self._run_safe(
-            f"{self._python_cmd()} --version", tool_name="python_version"
-        )
+        result = self._run_safe(f"{self._python_cmd()} --version", tool_name="python_version")
         return self._shell_response(result, tool_name="python_version")
 
     @tool
@@ -91,9 +91,7 @@ class PythonProvider(BaseProvider):
         Examples:
             pip_version()
         """
-        result = self._run_safe(
-            f"{self._pip_cmd()} --version", tool_name="pip_version"
-        )
+        result = self._run_safe(f"{self._pip_cmd()} --version", tool_name="pip_version")
         return self._shell_response(result, tool_name="pip_version")
 
     @tool
@@ -123,9 +121,7 @@ class PythonProvider(BaseProvider):
             "print(sys.prefix); "
             "print(sys.base_prefix)"
         )
-        result = self._run_safe(
-            f'{py} -c "{script}"', tool_name="python_info"
-        )
+        result = self._run_safe(f'{py} -c "{script}"', tool_name="python_info")
         if not result.succeeded:
             return make_error(result.stderr, tool="python_info", code="EXECUTION_ERROR")
 
@@ -138,9 +134,7 @@ class PythonProvider(BaseProvider):
                 "platform": lines[2] if len(lines) > 2 else "",
                 "prefix": lines[3] if len(lines) > 3 else "",
                 "base_prefix": lines[4] if len(lines) > 4 else "",
-                "in_virtualenv": (
-                    lines[3] != lines[4] if len(lines) > 4 else False
-                ),
+                "in_virtualenv": (lines[3] != lines[4] if len(lines) > 4 else False),
                 "active_venv": str(session.active_venv) if session.active_venv else None,
             },
             tool="python_info",
@@ -204,9 +198,7 @@ class PythonProvider(BaseProvider):
         """
         from utils.json_utils import success
 
-        result = self._run_safe(
-            f"{self._pip_cmd()} show {package}", tool_name="check_package"
-        )
+        result = self._run_safe(f"{self._pip_cmd()} show {package}", tool_name="check_package")
         if result.succeeded and result.stdout:
             # Parse version from pip show output
             version = ""
@@ -294,9 +286,7 @@ class PythonProvider(BaseProvider):
             try:
                 pm.assert_confirmed(action=f"pip uninstall {package}", confirm=confirm)
             except ConfirmationRequiredError:
-                return confirmation_required(
-                    f"pip uninstall {package}", tool="uninstall_package"
-                )
+                return confirmation_required(f"pip uninstall {package}", tool="uninstall_package")
 
         command = f"{self._pip_cmd()} uninstall --yes {package}"
         result = self._run_safe(command, tool_name="uninstall_package")
@@ -323,7 +313,7 @@ class PythonProvider(BaseProvider):
             create_venv(".venv")
             create_venv("envs/myproject")
         """
-        command = f"python -m venv \"{path}\""
+        command = f'python -m venv "{path}"'
         result = self._run_safe(command, tool_name="create_venv")
         return self._shell_response(result, tool_name="create_venv")
 
@@ -360,8 +350,7 @@ class PythonProvider(BaseProvider):
 
         if not venv_path.exists():
             return make_error(
-                f"Virtual environment not found: {venv_path}. "
-                "Run create_venv() first.",
+                f"Virtual environment not found: {venv_path}. Run create_venv() first.",
                 tool="activate_venv",
                 code="NOT_FOUND",
             )
@@ -456,8 +445,7 @@ class PythonProvider(BaseProvider):
 
         try:
             script_path = sandbox.resolve_safe(
-                Path(path) if Path(path).is_absolute()
-                else session.cwd / path
+                Path(path) if Path(path).is_absolute() else session.cwd / path
             )
         except WorkspaceViolationError as exc:
             return make_error(str(exc), tool="run_python_script", code="WORKSPACE_VIOLATION")

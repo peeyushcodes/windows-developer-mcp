@@ -181,7 +181,7 @@ class Session:
         with self._lock:
             self._history.append(entry)
             if len(self._history) > self.MAX_HISTORY:
-                self._history = self._history[-self.MAX_HISTORY:]
+                self._history = self._history[-self.MAX_HISTORY :]
             self._last_exit_code = exit_code
 
     def get_history(self, limit: int = 50) -> list[dict[str, str | int]]:
@@ -305,12 +305,8 @@ class Session:
                 "last_exit_code": self._last_exit_code,
                 "history_count": len(self._history),
                 "active_venv": str(self._active_venv) if self._active_venv else None,
-                "active_git_repo": (
-                    str(self._active_git_repo) if self._active_git_repo else None
-                ),
-                "active_project": (
-                    str(self._active_project) if self._active_project else None
-                ),
+                "active_git_repo": (str(self._active_git_repo) if self._active_git_repo else None),
+                "active_project": (str(self._active_project) if self._active_project else None),
                 "env_overrides": list(self._env.keys()),
                 "started_at": self._started_at.isoformat(),
             }

@@ -11,11 +11,11 @@ All tests run with:
 from __future__ import annotations
 
 from pathlib import Path
-
-# ---------------------------------------------------------------------------
-# Ensure src is on the Python path
-# ---------------------------------------------------------------------------
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 import pytest
 
@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT))
 # ---------------------------------------------------------------------------
 # Test Workspace Fixture
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def workspace_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
@@ -80,8 +81,10 @@ def config_override(workspace_root: Path, monkeypatch: pytest.MonkeyPatch):
 
     Returns a callable that accepts keyword overrides and applies them.
     """
+
     def _override(**kwargs):
         from core.config import get_config
+
         cfg = get_config()
         # Apply overrides via monkeypatching
         for key, value in kwargs.items():
@@ -90,11 +93,12 @@ def config_override(workspace_root: Path, monkeypatch: pytest.MonkeyPatch):
             for part in parts[:-1]:
                 obj = getattr(obj, part)
             monkeypatch.setattr(obj, parts[-1], value, raising=False)
+
     return _override
 
 
 @pytest.fixture()
-def test_file(workspace_root: Path) -> Path:
+def test_file(workspace_root: Path) -> Generator[Path, None, None]:
     """A temporary file in the workspace for read/write tests."""
     f = workspace_root / "test_file.txt"
     f.write_text("line 1\nline 2\nline 3\n")
@@ -104,9 +108,10 @@ def test_file(workspace_root: Path) -> Path:
 
 
 @pytest.fixture()
-def test_db(workspace_root: Path) -> Path:
+def test_db(workspace_root: Path) -> Generator[Path, None, None]:
     """A temporary SQLite database in the workspace."""
     import sqlite3
+
     db = workspace_root / "test.db"
     with sqlite3.connect(db) as conn:
         conn.execute(

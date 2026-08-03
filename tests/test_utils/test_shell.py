@@ -7,25 +7,67 @@ from utils.shell import Shell, ShellResult, ShellRunner
 
 class TestShellResult:
     def test_succeeded_property(self):
-        res = ShellResult(stdout="ok", stderr="", exit_code=0, duration_ms=10, command="echo ok", shell=Shell.POWERSHELL)
+        res = ShellResult(
+            stdout="ok",
+            stderr="",
+            exit_code=0,
+            duration_ms=10,
+            command="echo ok",
+            shell=Shell.POWERSHELL,
+        )
         assert res.succeeded is True
 
-        res_fail = ShellResult(stdout="", stderr="err", exit_code=1, duration_ms=10, command="echo err", shell=Shell.POWERSHELL)
+        res_fail = ShellResult(
+            stdout="",
+            stderr="err",
+            exit_code=1,
+            duration_ms=10,
+            command="echo err",
+            shell=Shell.POWERSHELL,
+        )
         assert res_fail.succeeded is False
 
     def test_output_property(self):
-        res = ShellResult(stdout="hello", stderr="", exit_code=0, duration_ms=10, command="echo hello", shell=Shell.POWERSHELL)
+        res = ShellResult(
+            stdout="hello",
+            stderr="",
+            exit_code=0,
+            duration_ms=10,
+            command="echo hello",
+            shell=Shell.POWERSHELL,
+        )
         assert res.output == "hello"
 
-        res_err = ShellResult(stdout="", stderr="error out", exit_code=1, duration_ms=10, command="cmd", shell=Shell.CMD)
+        res_err = ShellResult(
+            stdout="",
+            stderr="error out",
+            exit_code=1,
+            duration_ms=10,
+            command="cmd",
+            shell=Shell.CMD,
+        )
         assert res_err.output == "error out"
 
     def test_combined_property(self):
-        res = ShellResult(stdout="out", stderr="err", exit_code=0, duration_ms=10, command="cmd", shell=Shell.POWERSHELL)
+        res = ShellResult(
+            stdout="out",
+            stderr="err",
+            exit_code=0,
+            duration_ms=10,
+            command="cmd",
+            shell=Shell.POWERSHELL,
+        )
         assert res.combined == "out\nerr"
 
     def test_to_dict(self):
-        res = ShellResult(stdout="out", stderr="", exit_code=0, duration_ms=15, command="test", shell=Shell.POWERSHELL)
+        res = ShellResult(
+            stdout="out",
+            stderr="",
+            exit_code=0,
+            duration_ms=15,
+            command="test",
+            shell=Shell.POWERSHELL,
+        )
         d = res.to_dict()
         assert d["stdout"] == "out"
         assert d["exit_code"] == 0

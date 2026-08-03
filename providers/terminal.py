@@ -144,14 +144,14 @@ class TerminalProvider(BaseProvider):
 
         try:
             script_path = sandbox.resolve_safe(
-                Path(path) if Path(path).is_absolute()
-                else session.cwd / path
+                Path(path) if Path(path).is_absolute() else session.cwd / path
             )
         except WorkspaceViolationError as exc:
             return make_error(str(exc), tool="run_script", code="WORKSPACE_VIOLATION")
 
         if not script_path.exists():
             from utils.json_utils import not_found
+
             return not_found(f"Script {script_path}", tool="run_script")
 
         suffix = script_path.suffix.lower()
@@ -238,10 +238,7 @@ class TerminalProvider(BaseProvider):
 
         try:
             # Validate the target is in the workspace
-            target = (
-                Path(path) if Path(path).is_absolute()
-                else session.cwd / path
-            )
+            target = Path(path) if Path(path).is_absolute() else session.cwd / path
             sandbox.assert_within_workspace(target)
 
             # Change directory (session validates existence)

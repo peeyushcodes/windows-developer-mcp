@@ -323,9 +323,7 @@ class SQLiteProvider(BaseProvider):
                 try:
                     pm.assert_confirmed(action=f"sqlite write: {sql[:60]}", confirm=confirm)
                 except ConfirmationRequiredError:
-                    return confirmation_required(
-                        f"SQLite write: {sql[:60]}", tool="sqlite_execute"
-                    )
+                    return confirmation_required(f"SQLite write: {sql[:60]}", tool="sqlite_execute")
 
         sandbox = WorkspaceSandbox()
         with Timer() as t:

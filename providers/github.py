@@ -196,7 +196,9 @@ class GitHubProvider(BaseProvider):
                         "forks": data.get("forks_count"),
                         "open_issues": data.get("open_issues_count"),
                         "language": data.get("language"),
-                        "license": data.get("license", {}).get("spdx_id") if data.get("license") else None,
+                        "license": data.get("license", {}).get("spdx_id")
+                        if data.get("license")
+                        else None,
                         "default_branch": data.get("default_branch"),
                         "url": data.get("html_url"),
                         "clone_url": data.get("clone_url"),
@@ -358,7 +360,9 @@ class GitHubProvider(BaseProvider):
                         "author": data.get("user", {}).get("login"),
                         "assignees": [a.get("login") for a in data.get("assignees", [])],
                         "labels": [lbl.get("name") for lbl in data.get("labels", [])],
-                        "milestone": data.get("milestone", {}).get("title") if data.get("milestone") else None,
+                        "milestone": data.get("milestone", {}).get("title")
+                        if data.get("milestone")
+                        else None,
                         "created_at": data.get("created_at"),
                         "updated_at": data.get("updated_at"),
                         "comments": data.get("comments"),
@@ -551,9 +555,7 @@ class GitHubProvider(BaseProvider):
     # ------------------------------------------------------------------
 
     @tool
-    def github_list_releases(
-        self, owner: str, repo: str, limit: int = 10
-    ) -> dict[str, Any]:
+    def github_list_releases(self, owner: str, repo: str, limit: int = 10) -> dict[str, Any]:
         """
         List releases for a repository.
 

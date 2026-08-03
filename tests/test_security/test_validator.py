@@ -19,6 +19,7 @@ from security.validator import _MAX_COMMAND_LENGTH, CommandValidator, Validation
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def validator() -> CommandValidator:
     return CommandValidator()
@@ -27,6 +28,7 @@ def validator() -> CommandValidator:
 # ---------------------------------------------------------------------------
 # Length Check
 # ---------------------------------------------------------------------------
+
 
 class TestLengthCheck:
     def test_normal_command_passes(self, validator: CommandValidator) -> None:
@@ -54,12 +56,12 @@ class TestLengthCheck:
 # ---------------------------------------------------------------------------
 
 DANGEROUS_CASES = [
-    ("shutdown /s /t 0",     "shutdown"),
-    ("format c:",            "format_disk"),
-    ("del /f /s /q C:\\*",   "mass_delete"),
-    ("net user admin /add",  "net_user"),
-    ("reg delete HKLM",      "reg_delete"),
-    ("powershell -enc abc",  "encoded_powershell"),
+    ("shutdown /s /t 0", "shutdown"),
+    ("format c:", "format_disk"),
+    ("del /f /s /q C:\\*", "mass_delete"),
+    ("net user admin /add", "net_user"),
+    ("reg delete HKLM", "reg_delete"),
+    ("powershell -enc abc", "encoded_powershell"),
     ("Set-ExecutionPolicy Bypass", "execution_policy"),
     ("Invoke-Expression 'cmd'", "invoke_expression"),
     ("Stop-Service windefend", "stop_service"),
@@ -95,11 +97,13 @@ class TestDangerousPatterns:
 # Allowlist Enforcement
 # ---------------------------------------------------------------------------
 
+
 class TestAllowlist:
     def test_allowlisted_command_passes(
         self, validator: CommandValidator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         cfg = get_config()
         monkeypatch.setattr(cfg.security, "command_allowlist", ["git", "python"])
         assert validator.validate("git status").allowed
@@ -109,6 +113,7 @@ class TestAllowlist:
         self, validator: CommandValidator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         cfg = get_config()
         monkeypatch.setattr(cfg.security, "command_allowlist", ["git"])
         result = validator.validate("python --version")
@@ -119,6 +124,7 @@ class TestAllowlist:
         self, validator: CommandValidator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         cfg = get_config()
         monkeypatch.setattr(cfg.security, "command_allowlist", ["GIT"])
         assert validator.validate("git status").allowed
@@ -129,11 +135,13 @@ class TestAllowlist:
 # Extra Blocked Patterns
 # ---------------------------------------------------------------------------
 
+
 class TestExtraPatterns:
     def test_extra_pattern_blocks_command(
         self, validator: CommandValidator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         cfg = get_config()
         monkeypatch.setattr(cfg.security, "extra_blocked_patterns", [r"my_secret_tool"])
         result = validator.validate("my_secret_tool --run")
@@ -144,6 +152,7 @@ class TestExtraPatterns:
         self, validator: CommandValidator, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         cfg = get_config()
         # Deliberately invalid regex — should not crash
         monkeypatch.setattr(cfg.security, "extra_blocked_patterns", ["[invalid("])
@@ -155,6 +164,7 @@ class TestExtraPatterns:
 # ---------------------------------------------------------------------------
 # Injection Detection
 # ---------------------------------------------------------------------------
+
 
 class TestInjectionDetection:
     def test_backtick_subshell_is_blocked(self, validator: CommandValidator) -> None:
@@ -182,12 +192,14 @@ class TestInjectionDetection:
 # validate_or_raise
 # ---------------------------------------------------------------------------
 
+
 class TestValidateOrRaise:
     def test_safe_command_does_not_raise(self, validator: CommandValidator) -> None:
         validator.validate_or_raise("git status")  # should not raise
 
     def test_dangerous_command_raises_validation_error(self, validator: CommandValidator) -> None:
         from core.exceptions import ValidationError
+
         with pytest.raises(ValidationError):
             validator.validate_or_raise("shutdown /s /t 0")
 
@@ -195,6 +207,7 @@ class TestValidateOrRaise:
 # ---------------------------------------------------------------------------
 # ValidationResult helpers
 # ---------------------------------------------------------------------------
+
 
 class TestValidationResult:
     def test_permit_factory(self) -> None:

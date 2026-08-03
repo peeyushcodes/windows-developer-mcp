@@ -294,6 +294,4 @@ def configure_logging() -> None:
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
     logging.getLogger("mcp.audit").propagate = False
-    logging.getLogger(__name__).info(
-        "Application logging configured: level=%s", cfg.logging.level
-    )
+    logging.getLogger(__name__).info("Application logging configured: level=%s", cfg.logging.level)

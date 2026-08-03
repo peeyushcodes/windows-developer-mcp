@@ -25,7 +25,9 @@ class BrowserProvider(BaseProvider):
     """Provider for web and browser interaction tools."""
 
     name = "browser"
-    description = "Web page fetching, text extraction, URL checking, and system browser integration."
+    description = (
+        "Web page fetching, text extraction, URL checking, and system browser integration."
+    )
 
     @tool
     def open_url(self, url: str) -> dict[str, Any]:
@@ -39,7 +41,9 @@ class BrowserProvider(BaseProvider):
             Standard success or error response dictionary.
         """
         if not url.startswith(("http://", "https://")):
-            return make_error("Invalid URL protocol. Only http:// and https:// URLs are allowed.", tool="open_url")
+            return make_error(
+                "Invalid URL protocol. Only http:// and https:// URLs are allowed.", tool="open_url"
+            )
 
         try:
             opened = webbrowser.open(url)
@@ -64,7 +68,10 @@ class BrowserProvider(BaseProvider):
             Dictionary with status code, response headers, and content snippet.
         """
         if not url.startswith(("http://", "https://")):
-            return make_error("Invalid URL protocol. Only http:// and https:// URLs are allowed.", tool="fetch_page")
+            return make_error(
+                "Invalid URL protocol. Only http:// and https:// URLs are allowed.",
+                tool="fetch_page",
+            )
 
         try:
             with httpx.Client(timeout=timeout, follow_redirects=True) as client:
@@ -99,7 +106,10 @@ class BrowserProvider(BaseProvider):
             Dictionary with extracted page title and body text.
         """
         if not url.startswith(("http://", "https://")):
-            return make_error("Invalid URL protocol. Only http:// and https:// URLs are allowed.", tool="extract_text")
+            return make_error(
+                "Invalid URL protocol. Only http:// and https:// URLs are allowed.",
+                tool="extract_text",
+            )
 
         try:
             with httpx.Client(timeout=30, follow_redirects=True) as client:
@@ -107,11 +117,15 @@ class BrowserProvider(BaseProvider):
                 html = response.text
 
                 # Extract title
-                title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+                title_match = re.search(
+                    r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL
+                )
                 title = title_match.group(1).strip() if title_match else ""
 
                 # Remove script and style tags
-                clean_html = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.IGNORECASE | re.DOTALL)
+                clean_html = re.sub(
+                    r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.IGNORECASE | re.DOTALL
+                )
                 # Remove HTML comments
                 clean_html = re.sub(r"<!--.*?-->", "", clean_html, flags=re.DOTALL)
                 # Remove all remaining HTML tags
@@ -148,7 +162,10 @@ class BrowserProvider(BaseProvider):
             Dictionary with status code, server header, content type, and length.
         """
         if not url.startswith(("http://", "https://")):
-            return make_error("Invalid URL protocol. Only http:// and https:// URLs are allowed.", tool="check_url")
+            return make_error(
+                "Invalid URL protocol. Only http:// and https:// URLs are allowed.",
+                tool="check_url",
+            )
 
         try:
             with httpx.Client(timeout=15, follow_redirects=True) as client:
@@ -172,4 +189,3 @@ class BrowserProvider(BaseProvider):
         except Exception as exc:
             logger.exception("Failed to check URL: %s", url)
             return make_error(f"Failed to check URL '{url}': {exc}", tool="check_url")
-

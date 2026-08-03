@@ -44,14 +44,14 @@ _MAX_COMMAND_LENGTH: int = 8_192
 # These are heuristic — they may produce false positives for legitimate commands,
 # so they are checked last and only when no allowlist is configured.
 _INJECTION_PATTERNS: tuple[str, ...] = (
-    r";\s*rm\b",              # ; rm
-    r";\s*del\b",             # ; del
-    r";\s*format\b",          # ; format
-    r"\|\s*rm\b",             # | rm
-    r"`[^`]+`",               # backtick subshell
-    r"\$\([^)]+\)",           # $(command) subshell
+    r";\s*rm\b",  # ; rm
+    r";\s*del\b",  # ; del
+    r";\s*format\b",  # ; format
+    r"\|\s*rm\b",  # | rm
+    r"`[^`]+`",  # backtick subshell
+    r"\$\([^)]+\)",  # $(command) subshell
     r"&&\s*(rm|del|format)",  # && followed by dangerous command
-    r"\|\|\s*(rm|del|format)",# || followed by dangerous command
+    r"\|\|\s*(rm|del|format)",  # || followed by dangerous command
 )
 
 _COMPILED_INJECTION: tuple[re.Pattern[str], ...] = tuple(
@@ -165,22 +165,16 @@ class CommandValidator:
 
         # Step 4 — Extra user-configured patterns
         if cfg.security.extra_blocked_patterns:
-            result = self._check_extra_patterns(
-                command, cfg.security.extra_blocked_patterns
-            )
+            result = self._check_extra_patterns(command, cfg.security.extra_blocked_patterns)
             if not result.allowed:
-                logger.warning(
-                    "Command rejected (extra pattern): %r", command[:120]
-                )
+                logger.warning("Command rejected (extra pattern): %r", command[:120])
                 return result
 
         # Step 5 — Injection heuristics (only when no allowlist is active)
         if not cfg.security.command_allowlist:
             result = self._check_injection(command)
             if not result.allowed:
-                logger.warning(
-                    "Command rejected (injection): %r", command[:120]
-                )
+                logger.warning("Command rejected (injection): %r", command[:120])
                 return result
 
         logger.debug("Command validated OK: %r", command[:120])
@@ -209,8 +203,7 @@ class CommandValidator:
         """Reject commands exceeding the maximum length."""
         if len(command) > _MAX_COMMAND_LENGTH:
             return ValidationResult.deny(
-                f"Command too long: {len(command):,} characters "
-                f"(max {_MAX_COMMAND_LENGTH:,}).",
+                f"Command too long: {len(command):,} characters (max {_MAX_COMMAND_LENGTH:,}).",
                 code="COMMAND_TOO_LONG",
             )
         return ValidationResult.permit()
@@ -227,8 +220,7 @@ class CommandValidator:
             if cmd_lower.startswith(allowed_prefix.lower()):
                 return ValidationResult.permit()
         return ValidationResult.deny(
-            f"Command is not on the allowlist. "
-            f"Allowed prefixes: {allowlist!r}",
+            f"Command is not on the allowlist. Allowed prefixes: {allowlist!r}",
             code="NOT_ALLOWLISTED",
         )
 

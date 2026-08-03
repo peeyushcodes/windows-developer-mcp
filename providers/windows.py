@@ -63,8 +63,7 @@ class WindowsProvider(BaseProvider):
             try:
                 boot_ts = psutil.boot_time()
                 uptime_secs = int(
-                    (datetime.now(UTC) - datetime.fromtimestamp(boot_ts, tz=UTC))
-                    .total_seconds()
+                    (datetime.now(UTC) - datetime.fromtimestamp(boot_ts, tz=UTC)).total_seconds()
                 )
                 hours, remainder = divmod(uptime_secs, 3600)
                 minutes, seconds = divmod(remainder, 60)
@@ -81,9 +80,7 @@ class WindowsProvider(BaseProvider):
                         "python_version": platform.python_version(),
                         "uptime": f"{hours}h {minutes}m {seconds}s",
                         "uptime_seconds": uptime_secs,
-                        "boot_time": datetime.fromtimestamp(
-                            boot_ts, tz=UTC
-                        ).isoformat(),
+                        "boot_time": datetime.fromtimestamp(boot_ts, tz=UTC).isoformat(),
                     },
                     tool="system_info",
                     duration_ms=t.elapsed_ms,
@@ -110,6 +107,7 @@ class WindowsProvider(BaseProvider):
             )
             if result.succeeded:
                 import json
+
                 try:
                     data = json.loads(result.stdout)
                     return success(data, tool="windows_version", duration_ms=t.elapsed_ms)
@@ -388,6 +386,7 @@ class WindowsProvider(BaseProvider):
                 return make_error(result.stderr, tool="list_services", code="EXECUTION_ERROR")
 
             import json
+
             try:
                 raw = json.loads(result.stdout)
                 if isinstance(raw, dict):
@@ -402,9 +401,7 @@ class WindowsProvider(BaseProvider):
                         continue
                     if status_filter and status_str.lower() != status_filter.lower():
                         continue
-                    services.append(
-                        {"name": name, "display_name": display, "status": status_str}
-                    )
+                    services.append({"name": name, "display_name": display, "status": status_str})
                 return success(
                     {"count": len(services), "services": services},
                     tool="list_services",

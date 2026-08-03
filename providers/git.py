@@ -227,7 +227,7 @@ class GitProvider(BaseProvider):
             git_add("src/main.py")
             git_add("*.py")
         """
-        result = self._run_safe(f'git add {files}', tool_name="git_add")
+        result = self._run_safe(f"git add {files}", tool_name="git_add")
         return self._shell_response(result, tool_name="git_add")
 
     @tool
@@ -378,9 +378,7 @@ class GitProvider(BaseProvider):
             git_checkout("feature/dark-mode")
             git_checkout("src/broken.py")
         """
-        result = self._run_safe(
-            f'git checkout "{branch_or_file}"', tool_name="git_checkout"
-        )
+        result = self._run_safe(f'git checkout "{branch_or_file}"', tool_name="git_checkout")
         return self._shell_response(result, tool_name="git_checkout")
 
     @tool

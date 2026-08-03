@@ -79,9 +79,7 @@ class WorkspaceSandbox:
         root = self.workspace_root
 
         if not is_within(resolved, root=root):
-            logger.warning(
-                "Workspace violation: %s is outside workspace root %s", resolved, root
-            )
+            logger.warning("Workspace violation: %s is outside workspace root %s", resolved, root)
             raise WorkspaceViolationError(
                 f"Path {resolved!r} is outside the workspace boundary ({root!r}). "
                 "Update workspace.path or workspace.allowed_directories in config.toml "
@@ -118,9 +116,7 @@ class WorkspaceSandbox:
         for allowed_str in allowed_dirs:
             allowed = normalize_path(allowed_str)
             if is_within(resolved, root=allowed):
-                logger.debug(
-                    "Path %s allowed via extra allowed_directory %s", resolved, allowed
-                )
+                logger.debug("Path %s allowed via extra allowed_directory %s", resolved, allowed)
                 return resolved
 
         raise WorkspaceViolationError(

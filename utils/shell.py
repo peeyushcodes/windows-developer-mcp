@@ -114,9 +114,10 @@ class ShellRunner:
     # PowerShell arguments applied to every invocation.
     _PS_BASE_ARGS: tuple[str, ...] = (
         "powershell",
-        "-NoProfile",       # skip user profile (faster startup)
+        "-NoProfile",  # skip user profile (faster startup)
         "-NonInteractive",  # suppress interactive prompts
-        "-ExecutionPolicy", "Bypass",  # allow unsigned scripts in this process
+        "-ExecutionPolicy",
+        "Bypass",  # allow unsigned scripts in this process
         "-Command",
     )
 

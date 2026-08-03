@@ -1,0 +1,69 @@
+{
+  "$schema": "https://glama.ai/mcp/schema.json",
+  "name": "windows-developer-mcp",
+  "title": "Windows Developer MCP",
+  "description": "Production-grade Windows Developer MCP Server providing terminal execution, git management, docker orchestration, filesystem security, system diagnostics, and AI project analysis optimized for both Glama quality and Local LLM context efficiency.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "homepage": "https://github.com/peeyushcodes/windows-developer-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/peeyushcodes/windows-developer-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/peeyushcodes/windows-developer-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "windows",
+    "developer-tools",
+    "powershell",
+    "git",
+    "docker",
+    "python",
+    "nodejs",
+    "lm-studio",
+    "fastmcp"
+  ],
+  "author": {
+    "name": "Windows Developer MCP Contributors"
+  },
+  "server": {
+    "command": "windows-developer-mcp",
+    "args": [],
+    "env": {
+      "MCP_SERVER__PROFILE": "developer",
+      "MCP_WORKSPACE__PATH": "."
+    }
+  },
+  "profiles": {
+    "minimal": {
+      "description": "Lightweight context footprint (<10 core tools), optimal for 7B/8B local models running in LM Studio.",
+      "tools": [
+        "terminal_run",
+        "filesystem_read",
+        "filesystem_write",
+        "git_status",
+        "project_analyze",
+        "windows_system_info",
+        "mcp_search_tools",
+        "mcp_list_profiles",
+        "mcp_enable_provider"
+      ]
+    },
+    "developer": {
+      "description": "Standard developer toolset (~25 core tools across active domain providers).",
+      "default": true
+    },
+    "full": {
+      "description": "Exposes all fine-grained tools across all 12 domain providers for complete API coverage and Glama indexing."
+    }
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true,
+    "logging": true
+  }
+}

@@ -28,12 +28,16 @@ class TestJsonUtils:
         assert res["details"]["line"] == 10
 
     def test_shell_result(self):
-        res_ok = shell_result("stdout msg", "", 0, tool="cmd_tool", duration_ms=20, command="echo 1")
+        res_ok = shell_result(
+            "stdout msg", "", 0, tool="cmd_tool", duration_ms=20, command="echo 1"
+        )
         assert res_ok["status"] == "success"
         assert res_ok["exit_code"] == 0
         assert res_ok["output"] == "stdout msg"
 
-        res_fail = shell_result("", "stderr err", 1, tool="cmd_tool", duration_ms=20, command="exit 1")
+        res_fail = shell_result(
+            "", "stderr err", 1, tool="cmd_tool", duration_ms=20, command="exit 1"
+        )
         assert res_fail["status"] == "error"
         assert res_fail["exit_code"] == 1
         assert res_fail["output"] == "stderr err"

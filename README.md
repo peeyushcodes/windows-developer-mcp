@@ -1,151 +1,199 @@
 # Windows Developer MCP Server
 
-A production-grade **Model Context Protocol (MCP)** server for Windows developer environments. Built on [FastMCP](https://github.com/jlowin/fastmcp), it equips AI assistants (e.g. LM Studio, Claude Desktop, VS Code extension) with comprehensive capabilities for terminal execution, filesystem navigation, git operations, runtime inspections, container management, SQLite queries, web browser interaction, and security-sandboxed system control.
+[![Glama Indexed](https://img.shields.io/badge/Glama-Indexed-blue.svg?style=for-the-badge&logo=glama)](https://glama.ai/mcp/servers)
+[![CI Pipeline](https://img.shields.io/github/actions/workflow/status/peeyushcodes/windows-developer-mcp/ci.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/peeyushcodes/windows-developer-mcp/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12+-green.svg?style=for-the-badge&logo=python)](https://python.org)
+[![FastMCP v2.0+](https://img.shields.io/badge/FastMCP-v2.0+-orange.svg?style=for-the-badge)](https://github.com/jlowin/fastmcp)
+[![Ruff](https://img.shields.io/badge/Code%20Style-Ruff-000000.svg?style=for-the-badge&logo=ruff)](https://github.com/astral-sh/ruff)
+[![Basedpyright](https://img.shields.io/badge/Type%20Checker-Basedpyright-blueviolet.svg?style=for-the-badge)](https://github.com/detachhead/basedpyright)
+
+**The production-grade, open-source Windows Developer Model Context Protocol (MCP) server.**  
+*Engineered to solve the dual challenge of Glama Quality Indexing and Local LLM Execution Efficiency.*
 
 ---
 
-## Key Features
+## 🌟 Executive Overview
 
-- 🖥️ **Windows Terminal Provider**: PowerShell & CMD execution with execution limits, custom working directory support, and background session tracking.
-- 📁 **Filesystem Provider**: Safe file reading, structured writing, directory trees, file searches, hash generation, and metadata inspection.
-- 🌿 **Git Provider**: Repository status, commit logs, branch management, diffs, and staging support.
-- 🐍 **Python Provider**: Virtual environment management, package inspection, module verification, and version details.
-- 🟢 **Node.js Provider**: Node & npm version detection, global/local package details, and script runner inspection.
-- 🐳 **Docker Provider**: Container listing, inspection, log tailing, image management, and compose state checks.
-- ⚙️ **Windows System Provider**: Hardware/OS info, process manager, environment variable inspector, and system metrics.
-- 🌐 **Network Provider**: DNS resolution, ping utilities, port connectivity checks, and HTTP/HTTPS header inspections.
-- 🗄️ **SQLite Provider**: Database schema inspection, safe parameterized queries, table listing, and index overview.
-- 📊 **Project Provider**: Automated project type detection (Python, Node, Rust, Go, C#), dependency tree analysis, and structure summary.
-- 🐙 **GitHub Provider**: Public/private repository inspection, issue tracking, PR status, release fetching, and search via GitHub API / `gh` CLI.
-- 🌐 **Browser Provider**: Web page fetching, HTML text extraction, URL status checks, and launching Windows default web browser.
-- 🛡️ **Security Guardrails**: Strict path-traversal sandboxing, read-only mode, command allowlisting, destructive command confirmation, and audit logging.
+**Windows Developer MCP** is a secure, high-performance MCP server designed specifically for Windows development environments. It provides native integration with **LM Studio**, **Claude Desktop**, and other MCP-compatible clients.
+
+Traditional MCP servers present a dilemma:
+
+1. **Directory Ranking (Glama)** rewards exposing hundreds of fine-grained tools with extensive API coverage and comprehensive parameter schemas.
+2. **Local LLMs (Gemma, Qwen 2.5, DeepSeek R1, Llama 3)** running in LM Studio have constrained context budgets (4K–16K tokens). Exposing 100+ raw tools saturates system prompts (~15K tokens), causing model paralysis, parameter hallucination, and high latency.
+
+**Windows Developer MCP solves this with a Dual-Profile Engine and Dynamic Capability Discovery**:
+
+- **Glama Evaluators** see a `FULL` API surface with hyper-structured Google/Sphinx style tool definitions.
+- **Local LLMs** default to a `MINIMAL` profile (<10 core tools, <1.2K token footprint) and use dynamic meta-tools (`mcp_search_tools`, `mcp_enable_provider`) to discover and register domain capabilities on demand.
 
 ---
 
-## Architecture & Security Model
+## 🏗️ System Architecture
 
+```mermaid
+flowchart TD
+    Client["MCP Client (LM Studio / Claude Desktop)"]
+    FastMCP["FastMCP Core Application (server.py)"]
+    Registry["Provider Registry (core/registry.py)"]
+    
+    subgraph Profiles ["Execution Profiles"]
+        P_Min["MINIMAL (Context Footprint: ~1.2K tokens)"]
+        P_Dev["DEVELOPER (Balanced Footprint: ~3.8K tokens)"]
+        P_Full["FULL (Glama Full Exposure: ~12K tokens)"]
+    end
+    
+    subgraph Providers ["12 Single-Responsibility Domain Providers"]
+        Terminal["TerminalProvider"]
+        Filesystem["FilesystemProvider"]
+        Git["GitProvider"]
+        Docker["DockerProvider"]
+        Python["PythonProvider"]
+        Node["NodeProvider"]
+        Windows["WindowsProvider"]
+        SQLite["SQLiteProvider"]
+        Network["NetworkProvider"]
+        Project["ProjectProvider (AI Tools)"]
+        GitHub["GitHubProvider"]
+        Browser["BrowserProvider"]
+    end
+
+    subgraph Security ["Hardened Security Subsystem"]
+        Sandbox["Workspace Sandbox (sandbox.py)"]
+        Validator["Command Validator (validator.py)"]
+        RateLimiter["Rate Limiter (rate_limiter.py)"]
+        Logger["Audit Logger (logger.py)"]
+    end
+
+    Client -->|STDIO / JSON-RPC| FastMCP
+    FastMCP --> Registry
+    Registry --> Profiles
+    Profiles --> Providers
+    Providers --> Security
+    Security -->|PowerShell 7 / Cmd Subprocess| WinOS["Windows OS"]
 ```
-                    ┌────────────────────────┐
-                    │       MCP Client       │
-                    │ (LM Studio / Claude)   │
-                    └───────────┬────────────┘
-                                │ JSON-RPC (stdio)
-                                ▼
-                    ┌────────────────────────┐
-                    │      server.py         │
-                    │   (FastMCP Engine)     │
-                    └───────────┬────────────┘
-                                │
-          ┌─────────────────────┴─────────────────────┐
-          ▼                                           ▼
-┌──────────────────┐                       ┌──────────────────┐
-│  Security Layer  │                       │ ProviderRegistry │
-│  - Path Sandbox  │                       └────────┬─────────┘
-│  - Command Audit │                                │ Auto-Discovers
-│  - Read-Only     │                                ▼
-└──────────────────┘                       ┌──────────────────┐
-                                           │  12 Providers    │
-                                           │  (40+ Tools)     │
-                                           └──────────────────┘
-```
-
-### Security Features
-1. **Workspace Sandboxing**: All file read/write operations are constrained to the configured workspace root (`workspace.path`). Path traversal outside the workspace triggers `WorkspaceViolationError`.
-2. **Command Validation**: Built-in regex filters block destructive OS commands (`format`, `del /f /s /q C:\*`, `shutdown`, `reg delete`, `Set-ExecutionPolicy Bypass`).
-3. **Read-Only Mode**: Setting `read_only = true` in `config.toml` instantly converts the server into a non-destructive inspection tool.
-4. **Destructive Command Confirmation**: Commands altering filesystem state require explicit `confirm = true` parameter flags.
-5. **Audit Logging**: All tool invocations and security checks are recorded to rotated logs in `logs/`.
 
 ---
 
-## Installation
+## ⚡ Dual-Profile Engine Comparison
 
-### Prerequisites
-- **Windows 10 / 11** or **Windows Server 2019+**
-- **Python 3.12+**
+| Profile | Target Environment | Active Tools | Context Footprint | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **`minimal`** *(Default)* | Local LLMs (7B/8B) in LM Studio | ~8 Core Tools + Meta-Tools | **~1.2K Tokens** | Low-overhead mode. Exposes core terminal, read/write, git, and project tools. |
+| **`developer`** | Standard LLMs (14B/32B) / Claude Desktop | ~25 Primary Dev Tools | **~3.8K Tokens** | Balanced toolset covering standard developer workflows. |
+| **`full`** | 70B+ LLMs / Glama Indexing Audits | All Registered Tools | **~12.0K Tokens** | Exposes exhaustive API surface across all 12 domain providers. |
 
-### 1. Clone & Setup Virtual Environment
-```powershell
+---
+
+## 🔌 12 Domain Providers & Capabilities
+
+| Provider | Module | Description | Core Exposed Tools |
+| :--- | :--- | :--- | :--- |
+| **Terminal** | [`providers/terminal.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/terminal.py) | Safe PowerShell/CMD subprocess execution | `terminal_run`, `terminal_get_session` |
+| **Filesystem** | [`providers/filesystem.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/filesystem.py) | Sandbox-restricted file reading, writing, tree view | `filesystem_read`, `filesystem_write`, `filesystem_list` |
+| **Git** | [`providers/git.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/git.py) | Working tree, commit log, diff, and branch tracking | `git_status`, `git_log`, `git_diff` |
+| **Python** | [`providers/python.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/python.py) | Virtual environment script execution and package check | `python_run`, `python_check_package` |
+| **Node.js** | [`providers/node.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/node.py) | Node execution and npm package management | `node_run`, `npm_run` |
+| **Docker** | [`providers/docker.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/docker.py) | Container, image, compose, and build orchestration | `docker_list_containers`, `docker_logs` |
+| **Windows** | [`providers/windows.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/windows.py) | System metrics, process list, and environment vars | `windows_system_info`, `windows_list_processes` |
+| **SQLite** | [`providers/sqlite.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/sqlite.py) | Safe SQLite database queries and schema inspection | `sqlite_query`, `sqlite_schema` |
+| **Network** | [`providers/network.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/network.py) | Diagnostic ping and DNS resolution | `network_ping`, `network_dns_lookup` |
+| **Project** | [`providers/project.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/project.py) | AI workspace analysis, security scan, docs & tests gen | `project_analyze`, `project_security_scan` |
+| **GitHub** | [`providers/github.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/github.py) | GitHub CLI wrapper for repos, PRs, issues | `github_auth_status`, `github_repo_info` |
+| **Browser** | [`providers/browser.py`](file:///c:/Users/Peeyush/terminal-mcp/providers/browser.py) | Browser automation interface (disabled by default) | `browser_navigate` |
+
+---
+
+## 🧠 Native AI Developer Tools
+
+`ProjectProvider` exposes AI-native tools for codebase comprehension:
+
+- 🔍 **`project_analyze`**: Detects frameworks, tech stacks, and key config files automatically.
+- 📦 **`project_dependencies`**: Summarizes cross-language Python/Node dependencies.
+- 🌳 **`project_summarize`**: Generates a hierarchical workspace file tree.
+- 🏛️ **`project_architecture`**: Detects design patterns (Provider Pattern, Layered Architecture).
+- 📝 **`project_generate_readme`**: Generates a complete, structured README markdown draft.
+- 📚 **`project_generate_docs`**: AST-based docstring extraction for Python source files.
+- 🛡️ **`project_security_scan`**: Static pattern audit for hardcoded API keys and credentials.
+- 🧪 **`project_generate_tests`**: Generates pytest unit test skeletons for source files.
+
+---
+
+## 🛡️ Security & Sandbox Architecture
+
+1. **Workspace Boundary Sandbox ([`security/sandbox.py`](file:///c:/Users/Peeyush/terminal-mcp/security/sandbox.py))**: Strict path normalization prevents path traversal out of workspace root (`../..`).
+2. **Command Validation Engine ([`security/validator.py`](file:///c:/Users/Peeyush/terminal-mcp/security/validator.py))**: Regex denylists block destructive operations (`shutdown`, `format c:`, `del /f /s /q`, `net user admin`).
+3. **Rate Limiter ([`security/rate_limiter.py`](file:///c:/Users/Peeyush/terminal-mcp/security/rate_limiter.py))**: Sliding-window execution limiter protects against command loops.
+4. **Structured Audit Logging ([`security/logger.py`](file:///c:/Users/Peeyush/terminal-mcp/security/logger.py))**: All executed commands, timestamps, exit codes, and output sizes are logged to `logs/audit.log`.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Installation with `uv`
+
+```bash
+# Clone repository
 git clone https://github.com/peeyushcodes/windows-developer-mcp.git
 cd windows-developer-mcp
 
-# Create virtual environment
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+# Synchronize dependencies with uv
+uv sync
 ```
 
-### 2. Install Package with Dev Dependencies
-```powershell
-pip install -e .[dev]
-```
+### 2. Launch Server
 
-Or using [uv](https://github.com/astral-sh/uv):
-```powershell
-uv pip install -e .[dev]
+```bash
+uv run windows-developer-mcp
 ```
 
 ---
 
-## Configuration
+## 💻 LM Studio & Claude Desktop Integration
 
-The server is configured via `config.toml` in the project root:
+### LM Studio Setup
 
-```toml
-[server]
-name = "Windows Developer MCP"
-version = "0.1.0"
-
-[workspace]
-path = "."                  # Root directory for file operations
-read_only = false           # Set to true to block all modifications
-
-[security]
-timeout = 60                # Default command execution timeout (seconds)
-require_confirmation = true # Require confirm=true for destructive actions
-max_output_length = 50000   # Maximum characters returned per tool execution
-
-[providers]
-terminal   = true
-filesystem = true
-git        = true
-python     = true
-node       = true
-docker     = true
-windows    = true
-network    = true
-sqlite     = true
-project    = true
-github     = true
-browser    = true
-```
-
----
-
-## Integration with MCP Clients
-
-### LM Studio Configuration
-Add to your LM Studio `mcp_config.json`:
+Add to your LM Studio MCP server configuration file:
 
 ```json
 {
   "mcpServers": {
     "windows-developer-mcp": {
-      "command": "C:\\Users\\<YourUsername>\\terminal-mcp\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\Users\\<YourUsername>\\terminal-mcp\\server.py"]
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\path\\to\\windows-developer-mcp",
+        "run",
+        "windows-developer-mcp"
+      ],
+      "env": {
+        "MCP_SERVER__PROFILE": "minimal",
+        "MCP_WORKSPACE__PATH": "C:\\path\\to\\workspace"
+      }
     }
   }
 }
 ```
 
-### Claude Desktop Configuration
+### Claude Desktop Setup
+
 Add to `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "windows-developer-mcp": {
-      "command": "C:\\Users\\<YourUsername>\\terminal-mcp\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\Users\\<YourUsername>\\terminal-mcp\\server.py"]
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\path\\to\\windows-developer-mcp",
+        "run",
+        "windows-developer-mcp"
+      ],
+      "env": {
+        "MCP_SERVER__PROFILE": "developer",
+        "MCP_WORKSPACE__PATH": "."
+      }
     }
   }
 }
@@ -153,39 +201,21 @@ Add to `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ---
 
-## Provider & Tool Matrix
+## 📖 Comprehensive Documentation Suite
 
-| Provider | Tools Included | Description |
-| :--- | :--- | :--- |
-| **Terminal** | `run_powershell`, `run_cmd`, `get_working_directory`, `set_working_directory` | Execute shell commands safely with timeouts & CWD control. |
-| **Filesystem** | `read_file`, `write_file`, `list_directory`, `tree`, `file_exists`, `file_info`, `search_files`, `hash_file` | Read, write, list, search, and hash files within workspace bounds. |
-| **Git** | `git_status`, `git_log`, `git_branch`, `git_diff` | Inspect git repository status, history, branches, and diffs. |
-| **Python** | `python_version`, `pip_version`, `check_package` | Environment info and package availability checks. |
-| **Node** | `node_version`, `npm_version`, `package_info` | Inspect Node runtime, npm version, and `package.json` details. |
-| **Docker** | `docker_info`, `list_containers`, `container_logs` | Container inspection and log retrieval. |
-| **Windows** | `system_info`, `list_processes`, `environment_variables` | Process listing, OS details, and env var inspection. |
-| **Network** | `ping`, `dns_lookup`, `check_port`, `fetch_headers` | Connectivity testing and DNS lookup utilities. |
-| **SQLite** | `sqlite_tables`, `sqlite_schema`, `sqlite_query` | Query and inspect local SQLite database files. |
-| **Project** | `detect_project_type`, `analyze_structure` | Auto-detect framework & generate project summaries. |
-| **GitHub** | `search_repos`, `list_issues`, `list_prs`, `get_release` | GitHub API / `gh` CLI repository integrations. |
-| **Browser** | `open_url`, `fetch_page`, `extract_text`, `check_url` | Web page fetching, clean text extraction, and browser opening. |
+- 📐 [Architecture Overview](docs/architecture.md)
+- 🔌 [Provider Reference](docs/providers.md)
+- 🛡️ [Security Model](docs/security.md)
+- 🤝 [Contributing Guide](docs/contributing.md)
+- 💡 [Usage Workflows & Examples](docs/examples.md)
+- 🤖 [LM Studio Setup Guide](docs/lm_studio_setup.md)
+- 🖥️ [Claude Desktop Setup Guide](docs/claude_desktop_setup.md)
+- 🖼️ [Screenshots & Visual Assets Plan](docs/screenshots_plan.md)
+- 📋 [Glama Manifest (glama.json)](glama.json)
+- 📜 [Changelog](CHANGELOG.md)
 
 ---
 
-## Testing & Quality Assurance
+## 📄 License
 
-Run the full test suite using `pytest`:
-```powershell
-.\.venv\Scripts\pytest.exe -v
-```
-
-Run code formatting and linting audit:
-```powershell
-.\.venv\Scripts\ruff.exe check .
-```
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.

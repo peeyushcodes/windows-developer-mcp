@@ -22,29 +22,34 @@ from security.sandbox import WorkspaceSandbox
 def sandbox(workspace_root: Path, monkeypatch: pytest.MonkeyPatch) -> WorkspaceSandbox:
     """A WorkspaceSandbox configured to the test workspace."""
     from core.config import get_config
+
     cfg = get_config()
     monkeypatch.setattr(cfg.workspace, "path", str(workspace_root))
     return WorkspaceSandbox()
 
 
 class TestWorkspaceSandbox:
-    def test_path_inside_workspace_is_allowed(self, sandbox: WorkspaceSandbox, workspace_root: Path) -> None:
+    def test_path_inside_workspace_is_allowed(
+        self, sandbox: WorkspaceSandbox, workspace_root: Path
+    ) -> None:
         safe = sandbox.resolve_safe(workspace_root / "src" / "main.py")
         assert safe.is_absolute()
         assert safe == (workspace_root / "src" / "main.py").resolve()
 
-    def test_workspace_root_itself_is_allowed(self, sandbox: WorkspaceSandbox, workspace_root: Path) -> None:
+    def test_workspace_root_itself_is_allowed(
+        self, sandbox: WorkspaceSandbox, workspace_root: Path
+    ) -> None:
         safe = sandbox.resolve_safe(workspace_root)
         assert safe == workspace_root.resolve()
 
-    def test_path_traversal_is_blocked(self, sandbox: WorkspaceSandbox, workspace_root: Path) -> None:
+    def test_path_traversal_is_blocked(
+        self, sandbox: WorkspaceSandbox, workspace_root: Path
+    ) -> None:
         evil_path = workspace_root / ".." / ".." / "etc" / "passwd"
         with pytest.raises(WorkspaceViolationError):
             sandbox.resolve_safe(evil_path)
 
-    def test_absolute_path_outside_workspace_is_blocked(
-        self, sandbox: WorkspaceSandbox
-    ) -> None:
+    def test_absolute_path_outside_workspace_is_blocked(self, sandbox: WorkspaceSandbox) -> None:
         with pytest.raises(WorkspaceViolationError):
             sandbox.resolve_safe(Path("C:/Windows/System32/cmd.exe"))
 
@@ -80,6 +85,7 @@ class TestWorkspaceSandbox:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         from core.config import get_config
+
         extra_dir = workspace_root.parent / "extra_allowed"
         extra_dir.mkdir(exist_ok=True)
         cfg = get_config()

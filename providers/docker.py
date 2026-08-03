@@ -236,15 +236,17 @@ class DockerProvider(BaseProvider):
             try:
                 pm.assert_confirmed(action=f"docker rm {container}", confirm=confirm)
             except ConfirmationRequiredError:
-                return confirmation_required(f"docker rm {container}", tool="docker_remove_container")
+                return confirmation_required(
+                    f"docker rm {container}", tool="docker_remove_container"
+                )
 
         force_flag = "--force" if force else ""
-        return self._docker(f"rm {force_flag} {container}".strip(), tool_name="docker_remove_container")
+        return self._docker(
+            f"rm {force_flag} {container}".strip(), tool_name="docker_remove_container"
+        )
 
     @tool
-    def docker_logs(
-        self, container: str, tail: int = 100, follow: bool = False
-    ) -> dict[str, Any]:
+    def docker_logs(self, container: str, tail: int = 100, follow: bool = False) -> dict[str, Any]:
         """
         Return logs from a container.
 

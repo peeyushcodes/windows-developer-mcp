@@ -54,8 +54,4 @@ class RequestContext:
         }
 
     def __repr__(self) -> str:
-        return (
-            f"RequestContext("
-            f"tool={self.tool_name!r}, "
-            f"request_id={self.request_id[:8]!r}…)"
-        )
+        return f"RequestContext(tool={self.tool_name!r}, request_id={self.request_id[:8]!r}…)"

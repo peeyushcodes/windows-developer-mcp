@@ -1,6 +1,5 @@
 """Unit and integration tests for server.py entry point."""
 
-
 from fastmcp import FastMCP
 
 from core.registry import ProviderRegistry
@@ -35,6 +34,7 @@ class TestServerInitialization:
                 raise RuntimeError("Initialization boom")
 
         import types
+
         fake_module = types.ModuleType("providers.faulty")
         fake_module.FaultyProvider = FaultyProvider  # type: ignore[attr-defined]
 

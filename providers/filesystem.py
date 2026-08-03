@@ -165,12 +165,8 @@ class FilesystemProvider(BaseProvider):
                         "type": "directory" if target.is_dir() else "file",
                         "size_bytes": stat.st_size,
                         "size_human": format_size(stat.st_size),
-                        "created": datetime.fromtimestamp(
-                            stat.st_ctime, tz=UTC
-                        ).isoformat(),
-                        "modified": datetime.fromtimestamp(
-                            stat.st_mtime, tz=UTC
-                        ).isoformat(),
+                        "created": datetime.fromtimestamp(stat.st_ctime, tz=UTC).isoformat(),
+                        "modified": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
                         "extension": target.suffix,
                         "readable": os.access(target, os.R_OK),
                         "writable": os.access(target, os.W_OK),
@@ -259,9 +255,7 @@ class FilesystemProvider(BaseProvider):
                             "type": "directory" if item.is_dir() else "file",
                             "size_bytes": stat.st_size if item.is_file() else None,
                             "size_human": format_size(stat.st_size) if item.is_file() else None,
-                            "modified": datetime.fromtimestamp(
-                                stat.st_mtime, tz=UTC
-                            ).isoformat(),
+                            "modified": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
                         }
                     )
                 return success(
@@ -322,10 +316,7 @@ class FilesystemProvider(BaseProvider):
                     lines.append(f"{prefix}[Permission Denied]")
                     return
 
-                visible = [
-                    i for i in items
-                    if show_hidden or not i.name.startswith(".")
-                ]
+                visible = [i for i in items if show_hidden or not i.name.startswith(".")]
                 for idx, item in enumerate(visible):
                     is_last = idx == len(visible) - 1
                     connector = "└── " if is_last else "├── "
@@ -597,6 +588,7 @@ class FilesystemProvider(BaseProvider):
 
             if dst_path.exists() and not confirm:
                 from security.permissions import PermissionManager
+
                 pm = PermissionManager()
                 if pm.requires_confirmation("copy_file"):
                     return confirmation_required(
@@ -643,9 +635,7 @@ class FilesystemProvider(BaseProvider):
             try:
                 pm.assert_confirmed(action=f"move_file({src!r} → {dst!r})", confirm=confirm)
             except ConfirmationRequiredError:
-                return confirmation_required(
-                    f"move_file({src!r} → {dst!r})", tool="move_file"
-                )
+                return confirmation_required(f"move_file({src!r} → {dst!r})", tool="move_file")
 
         sandbox = WorkspaceSandbox()
         with Timer() as t:

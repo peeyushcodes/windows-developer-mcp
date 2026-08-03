@@ -18,6 +18,7 @@ class TestReadOnlyMode:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().workspace, "read_only", False)
         result = pm.check_read_only("write_file")
         assert result.allowed
@@ -26,6 +27,7 @@ class TestReadOnlyMode:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().workspace, "read_only", True)
         result = pm.check_read_only("write_file")
         assert not result.allowed
@@ -35,6 +37,7 @@ class TestReadOnlyMode:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().workspace, "read_only", True)
         result = pm.check_read_only("read_file")
         assert result.allowed
@@ -43,6 +46,7 @@ class TestReadOnlyMode:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().workspace, "read_only", True)
         with pytest.raises(ReadOnlyModeError):
             pm.assert_not_read_only("write_file")
@@ -53,6 +57,7 @@ class TestConfirmation:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().security, "require_confirmation", True)
         assert pm.requires_confirmation("delete_file") is True
         assert pm.requires_confirmation("git_push") is True
@@ -62,6 +67,7 @@ class TestConfirmation:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().security, "require_confirmation", False)
         assert pm.requires_confirmation("delete_file") is False
 
@@ -69,6 +75,7 @@ class TestConfirmation:
         self, pm: PermissionManager, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         from core.config import get_config
+
         monkeypatch.setattr(get_config().security, "require_confirmation", True)
         assert pm.requires_confirmation("git_status") is False
         assert pm.requires_confirmation("read_file") is False

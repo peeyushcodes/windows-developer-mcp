@@ -35,9 +35,7 @@ class TestSessionCwd:
         with pytest.raises(FileNotFoundError):
             session.change_directory("/nonexistent/path/xyz")
 
-    def test_change_directory_raises_for_file(
-        self, session: Session, workspace_root: Path
-    ) -> None:
+    def test_change_directory_raises_for_file(self, session: Session, workspace_root: Path) -> None:
         with pytest.raises(NotADirectoryError):
             session.change_directory(str(workspace_root / "README.md"))
 
@@ -113,6 +111,7 @@ class TestSessionSingleton:
 
     def test_to_dict_returns_serializable(self, session: Session) -> None:
         import json
+
         d = session.to_dict()
         # Should be JSON serializable
         json.dumps(d, default=str)

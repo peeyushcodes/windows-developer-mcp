@@ -252,7 +252,5 @@ class NetworkProvider(BaseProvider):
             traceroute("8.8.8.8", max_hops=10)
         """
         max_hops = max(1, min(max_hops, 30))
-        result = self._run_safe(
-            f"tracert -h {max_hops} {host}", tool_name="traceroute"
-        )
+        result = self._run_safe(f"tracert -h {max_hops} {host}", tool_name="traceroute")
         return self._shell_response(result, tool_name="traceroute")

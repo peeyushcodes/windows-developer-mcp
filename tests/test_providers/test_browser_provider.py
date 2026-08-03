@@ -26,7 +26,9 @@ class TestBrowserProvider:
                 self.status_code = 200
                 self.url = "https://example.com"
                 self.headers = {"content-type": "text/html"}
-                self.text = "<html><head><title>Test</title></head><body><h1>Hello</h1></body></html>"
+                self.text = (
+                    "<html><head><title>Test</title></head><body><h1>Hello</h1></body></html>"
+                )
 
         class MockClient:
             def __init__(self, *args, **kwargs):
@@ -82,7 +84,11 @@ class TestBrowserProvider:
             def __init__(self):
                 self.status_code = 200
                 self.url = "https://example.com"
-                self.headers = {"content-type": "text/html", "content-length": "100", "server": "nginx"}
+                self.headers = {
+                    "content-type": "text/html",
+                    "content-length": "100",
+                    "server": "nginx",
+                }
                 self.is_success = True
 
         class MockClient:

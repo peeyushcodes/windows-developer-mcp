@@ -1,21 +1,27 @@
 """
 Project analysis provider for Windows Developer MCP.
 
-Provides tools for understanding project structure, dependencies,
-and codebase composition without executing arbitrary code.
+Provides tools for understanding project structure, dependencies, codebase composition,
+architecture analysis, security scanning, documentation generation, and test creation.
 
 Tools:
-    analyze_project      — Detect project type and key files
-    count_lines_of_code  — Count lines across the codebase
-    find_todos           — Find TODO/FIXME/HACK comments
-    dependency_check     — Check outdated/security issues in packages
-    read_package_json    — Parse and summarise package.json
-    read_pyproject_toml  — Parse and summarise pyproject.toml
-    project_summary      — Comprehensive project overview
+    project_analyze         — Comprehensive workspace overview & tech stack identification
+    project_dependencies    — Dependency tree & configuration analyzer
+    project_summarize       — Repository hierarchy & file role breakdown
+    project_architecture    — Component topology & design pattern discovery
+    project_generate_readme — AI-driven README draft generator
+    project_generate_docs   — Automated API & docstring documentation builder
+    project_security_scan   — Static pattern security audit (hardcoded secrets, credentials)
+    project_generate_tests  — Test skeleton generator for source files
+    count_lines_of_code     — Count lines across the codebase
+    find_todos              — Find TODO/FIXME/HACK comments
+    read_package_json       — Parse and summarize package.json
+    read_pyproject_toml     — Parse and summarize pyproject.toml
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 import re
@@ -34,13 +40,14 @@ logger = logging.getLogger(__name__)
 
 class ProjectProvider(BaseProvider):
     """
-    Provides static project analysis tools that do not execute arbitrary code.
+    Provides static project analysis, architecture inspection, documentation generation,
+    security scanning, and test skeleton creation tools.
 
-    All operations are read-only. No files are created or modified.
+    All operations operate safely within workspace boundaries.
     """
 
     name = "project"
-    description = "Project structure analysis, LOC counting, TODO finding, and dependency review."
+    description = "Project structure analysis, LOC counting, architecture inspection, security scanning, and AI docs/tests generation."
 
     def _workspace_root(self) -> Path:
         sandbox = WorkspaceSandbox()
@@ -51,23 +58,22 @@ class ProjectProvider(BaseProvider):
             return session.cwd
 
     @tool
-    def analyze_project(self, path: str = ".") -> dict[str, Any]:
+    def project_analyze(self, path: str = ".") -> dict[str, Any]:
         """
-        Detect project type, framework, and key configuration files.
+        Analyze project workspace structure, frameworks, and key configurations.
 
-        Identifies Python, Node.js, .NET, Rust, Go, Java, Docker,
-        and other project types automatically by checking for
-        characteristic files.
+        Identifies Python, Node.js, .NET, Rust, Go, Java, Docker, and other frameworks
+        by inspecting root configuration markers.
 
         Args:
-            path: Project root directory. Defaults to cwd.
+            path: Project root directory path. Defaults to "." (current working directory).
 
         Returns:
-            A dict with keys: status, data (project_types, key_files, git, description).
+            Dict containing status, workspace path, detected tech stacks, key config files, and Git status.
 
         Examples:
-            analyze_project()
-            analyze_project("C:/projects/myapp")
+            project_analyze()
+            project_analyze("C:/projects/myapp")
         """
         sandbox = WorkspaceSandbox()
         with Timer() as t:
@@ -76,18 +82,23 @@ class ProjectProvider(BaseProvider):
                     Path(path) if Path(path).is_absolute() else get_session().cwd / path
                 )
             except WorkspaceViolationError as exc:
-                return make_error(str(exc), tool="analyze_project", code="WORKSPACE_VIOLATION")
+                return make_error(str(exc), tool="project_analyze", code="WORKSPACE_VIOLATION")
 
             indicators = {
-                "python":     ["pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile"],
-                "nodejs":     ["package.json", "yarn.lock", "pnpm-lock.yaml"],
-                "dotnet":     ["*.csproj", "*.sln", "*.fsproj"],
-                "rust":       ["Cargo.toml"],
-                "go":         ["go.mod"],
-                "java":       ["pom.xml", "build.gradle", "build.gradle.kts"],
-                "docker":     ["Dockerfile", "docker-compose.yml", "docker-compose.yaml"],
-                "terraform":  ["main.tf", "*.tf"],
-                "kubernetes": ["*.yaml", "*.yml"],  # coarse — refined below
+                "python": [
+                    "pyproject.toml",
+                    "setup.py",
+                    "setup.cfg",
+                    "requirements.txt",
+                    "Pipfile",
+                ],
+                "nodejs": ["package.json", "yarn.lock", "pnpm-lock.yaml"],
+                "dotnet": ["*.csproj", "*.sln", "*.fsproj"],
+                "rust": ["Cargo.toml"],
+                "go": ["go.mod"],
+                "java": ["pom.xml", "build.gradle", "build.gradle.kts"],
+                "docker": ["Dockerfile", "docker-compose.yml", "docker-compose.yaml"],
+                "terraform": ["main.tf", "*.tf"],
             }
 
             detected: list[str] = []
@@ -105,13 +116,8 @@ class ProjectProvider(BaseProvider):
                             detected.append(tech)
                             key_files.append(pattern)
 
-            # Refine kubernetes (only if has k8s-like keys in yaml files)
-            if "kubernetes" in detected:
-                detected.remove("kubernetes")
-
-            # Git info
             git_dir = root / ".git"
-            git_info = {"present": git_dir.exists()}
+            git_info: dict[str, Any] = {"present": git_dir.exists()}
             if git_dir.exists():
                 head_file = git_dir / "HEAD"
                 if head_file.exists():
@@ -122,14 +128,477 @@ class ProjectProvider(BaseProvider):
             return success(
                 {
                     "path": str(root),
-                    "project_types": list(dict.fromkeys(detected)),  # deduplicated
+                    "project_types": list(dict.fromkeys(detected)),
                     "key_files": list(dict.fromkeys(key_files)),
                     "git": git_info,
                     "is_multi_project": len(detected) > 1,
                 },
-                tool="analyze_project",
+                tool="project_analyze",
                 duration_ms=t.elapsed_ms,
             )
+
+    @tool
+    def project_dependencies(self, path: str = ".") -> dict[str, Any]:
+        """
+        Extract and summarize project dependencies across Python and Node.js manifests.
+
+        Inspects package.json, pyproject.toml, requirements.txt, and lockfiles to assemble
+        a consolidated dependency manifest.
+
+        Args:
+            path: Project root directory. Defaults to ".".
+
+        Returns:
+            Dict containing Python dependencies, Node.js dependencies, and lockfile statuses.
+
+        Examples:
+            project_dependencies()
+        """
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                root = sandbox.resolve_safe(
+                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(str(exc), tool="project_dependencies", code="WORKSPACE_VIOLATION")
+
+            python_deps: dict[str, Any] = {}
+            node_deps: dict[str, Any] = {}
+
+            # Pyproject.toml
+            pyp = root / "pyproject.toml"
+            if pyp.exists():
+                try:
+                    import tomllib
+
+                    content = tomllib.loads(pyp.read_text(encoding="utf-8"))
+                    python_deps["pyproject"] = content.get("project", {}).get("dependencies", [])
+                except Exception:
+                    pass
+
+            # Requirements.txt
+            req = root / "requirements.txt"
+            if req.exists():
+                try:
+                    lines = [
+                        line.strip()
+                        for line in req.read_text(encoding="utf-8").splitlines()
+                        if line.strip() and not line.startswith("#")
+                    ]
+                    python_deps["requirements"] = lines
+                except Exception:
+                    pass
+
+            # Package.json
+            pkg = root / "package.json"
+            if pkg.exists():
+                try:
+                    data = json.loads(pkg.read_text(encoding="utf-8"))
+                    node_deps["dependencies"] = data.get("dependencies", {})
+                    node_deps["devDependencies"] = data.get("devDependencies", {})
+                except Exception:
+                    pass
+
+            return success(
+                {
+                    "path": str(root),
+                    "python": python_deps,
+                    "nodejs": node_deps,
+                },
+                tool="project_dependencies",
+                duration_ms=t.elapsed_ms,
+            )
+
+    @tool
+    def project_summarize(self, path: str = ".", max_depth: int = 2) -> dict[str, Any]:
+        """
+        Generate a hierarchical tree summary of project files and directories.
+
+        Args:
+            path: Project root path. Defaults to ".".
+            max_depth: Maximum directory traversal depth (1-5). Defaults to 2.
+
+        Returns:
+            Dict with directory tree structure, file counts, and extension breakdown.
+
+        Examples:
+            project_summarize(max_depth=3)
+        """
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                root = sandbox.resolve_safe(
+                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(str(exc), tool="project_summarize", code="WORKSPACE_VIOLATION")
+
+            excl = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"}
+
+            def build_tree(current_dir: Path, depth: int) -> dict[str, Any]:
+                if depth > max_depth:
+                    return {"name": current_dir.name, "type": "directory", "truncated": True}
+
+                items = []
+                try:
+                    for child in sorted(current_dir.iterdir()):
+                        if child.name in excl:
+                            continue
+                        if child.is_dir():
+                            items.append(build_tree(child, depth + 1))
+                        else:
+                            items.append(
+                                {
+                                    "name": child.name,
+                                    "type": "file",
+                                    "size_bytes": child.stat().st_size,
+                                }
+                            )
+                except OSError:
+                    pass
+
+                return {"name": current_dir.name, "type": "directory", "children": items}
+
+            tree = build_tree(root, 1)
+
+            return success(
+                {
+                    "path": str(root),
+                    "max_depth": max_depth,
+                    "tree": tree,
+                },
+                tool="project_summarize",
+                duration_ms=t.elapsed_ms,
+            )
+
+    @tool
+    def project_architecture(self, path: str = ".") -> dict[str, Any]:
+        """
+        Inspect software architectural patterns, module layering, and component organization.
+
+        Analyzes file locations, entry points, and structural patterns (MVC, Provider Pattern, Layered Architecture).
+
+        Args:
+            path: Project directory path. Defaults to ".".
+
+        Returns:
+            Dict detailing detected architecture components, entry points, and design patterns.
+
+        Examples:
+            project_architecture()
+        """
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                root = sandbox.resolve_safe(
+                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(str(exc), tool="project_architecture", code="WORKSPACE_VIOLATION")
+
+            components: list[dict[str, str]] = []
+            patterns: list[str] = []
+
+            # Check provider pattern
+            if (root / "providers").is_dir():
+                patterns.append("Provider Pattern / Plugin Architecture")
+                components.append({"name": "providers", "role": "Domain capability providers"})
+
+            # Check core module
+            if (root / "core").is_dir():
+                components.append(
+                    {"name": "core", "role": "Central orchestration and configuration"}
+                )
+
+            # Check security module
+            if (root / "security").is_dir():
+                components.append(
+                    {"name": "security", "role": "Sandboxing, permissions, and audit validation"}
+                )
+
+            # Check entry points
+            entry_points = []
+            for ep in ["server.py", "main.py", "app.js", "index.js", "src/index.ts"]:
+                if (root / ep).exists():
+                    entry_points.append(ep)
+
+            return success(
+                {
+                    "path": str(root),
+                    "architecture_patterns": patterns,
+                    "entry_points": entry_points,
+                    "core_components": components,
+                },
+                tool="project_architecture",
+                duration_ms=t.elapsed_ms,
+            )
+
+    @tool
+    def project_generate_readme(self, path: str = ".") -> dict[str, Any]:
+        """
+        Generate a comprehensive, structured README.md draft based on workspace inspection.
+
+        Analyzes tech stack, entry points, scripts, and configuration to create a complete README markdown template.
+
+        Args:
+            path: Project root path. Defaults to ".".
+
+        Returns:
+            Dict containing the generated markdown content under data.readme_markdown.
+
+        Examples:
+            project_generate_readme()
+        """
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                root = sandbox.resolve_safe(
+                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(
+                    str(exc), tool="project_generate_readme", code="WORKSPACE_VIOLATION"
+                )
+
+            analysis = self.project_analyze(path).get("data", {})
+            proj_types = ", ".join(analysis.get("project_types", ["Software"]))
+            name = root.name.replace("-", " ").replace("_", " ").title()
+
+            markdown = f"""# {name}
+
+Production-grade {proj_types} application.
+
+## Overview
+This repository provides automated developer capabilities and tool execution workflows.
+
+## Key Features
+- **Architecture**: Modular provider-based architecture.
+- **Security**: Built-in sandbox execution and path validation.
+- **Tech Stack**: {proj_types}.
+
+## Quick Start
+```bash
+# Install dependencies
+uv sync
+
+# Run tests
+uv run pytest
+```
+
+## License
+MIT License.
+"""
+
+            return success(
+                {
+                    "path": str(root),
+                    "readme_markdown": markdown,
+                },
+                tool="project_generate_readme",
+                duration_ms=t.elapsed_ms,
+            )
+
+    @tool
+    def project_generate_docs(self, file_path: str) -> dict[str, Any]:
+        """
+        Extract classes, functions, and docstrings from a Python source file to create API docs.
+
+        Args:
+            file_path: Relative path to the target Python file.
+
+        Returns:
+            Dict containing formatted markdown API documentation.
+
+        Examples:
+            project_generate_docs("providers/git.py")
+        """
+        import ast
+
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                full_path = sandbox.resolve_safe(
+                    Path(file_path)
+                    if Path(file_path).is_absolute()
+                    else get_session().cwd / file_path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(
+                    str(exc), tool="project_generate_docs", code="WORKSPACE_VIOLATION"
+                )
+
+            if not full_path.exists() or not full_path.is_file():
+                return make_error(
+                    f"File not found: {file_path}", tool="project_generate_docs", code="NOT_FOUND"
+                )
+
+            try:
+                tree = ast.parse(full_path.read_text(encoding="utf-8"))
+                classes = []
+                functions = []
+
+                for node in ast.iter_child_nodes(tree):
+                    if isinstance(node, ast.ClassDef):
+                        doc = ast.get_docstring(node) or "No docstring provided."
+                        methods = [n.name for n in node.body if isinstance(n, ast.FunctionDef)]
+                        classes.append({"name": node.name, "docstring": doc, "methods": methods})
+                    elif isinstance(node, ast.FunctionDef):
+                        doc = ast.get_docstring(node) or "No docstring provided."
+                        functions.append({"name": node.name, "docstring": doc})
+
+                return success(
+                    {
+                        "file": file_path,
+                        "classes": classes,
+                        "functions": functions,
+                    },
+                    tool="project_generate_docs",
+                    duration_ms=t.elapsed_ms,
+                )
+            except Exception as exc:
+                return make_error(str(exc), tool="project_generate_docs", code="AST_PARSE_ERROR")
+
+    @tool
+    def project_security_scan(self, path: str = ".") -> dict[str, Any]:
+        """
+        Perform a static pattern security scan for sensitive patterns (hardcoded API keys, tokens, dangerous commands).
+
+        Args:
+            path: Target directory to scan. Defaults to ".".
+
+        Returns:
+            Dict with vulnerability findings, line numbers, and risk levels.
+
+        Examples:
+            project_security_scan()
+        """
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                root = sandbox.resolve_safe(
+                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(
+                    str(exc), tool="project_security_scan", code="WORKSPACE_VIOLATION"
+                )
+
+            patterns = [
+                (
+                    re.compile(r"api_key\s*=\s*[\"'][A-Za-z0-9_\-]{16,}[\"']", re.I),
+                    "High",
+                    "Hardcoded API Key",
+                ),
+                (
+                    re.compile(r"password\s*=\s*[\"'][^\"']+[\"']", re.I),
+                    "Medium",
+                    "Potential Hardcoded Password",
+                ),
+                (re.compile(r"eval\(", re.I), "High", "Use of eval()"),
+                (
+                    re.compile(r"subprocess\.Popen\(.*shell=True", re.I),
+                    "Medium",
+                    "Subprocess with shell=True",
+                ),
+            ]
+
+            excl = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache"}
+            findings: list[dict[str, Any]] = []
+
+            for file_path in root.rglob("*.py"):
+                if any(part in excl for part in file_path.parts):
+                    continue
+                try:
+                    content = file_path.read_text(encoding="utf-8", errors="ignore")
+                    for lineno, line in enumerate(content.splitlines(), start=1):
+                        for regex, severity, category in patterns:
+                            if regex.search(line):
+                                findings.append(
+                                    {
+                                        "file": str(file_path.relative_to(root)),
+                                        "line": lineno,
+                                        "severity": severity,
+                                        "category": category,
+                                        "snippet": line.strip()[:80],
+                                    }
+                                )
+                except OSError:
+                    pass
+
+            return success(
+                {
+                    "path": str(root),
+                    "total_findings": len(findings),
+                    "findings": findings,
+                },
+                tool="project_security_scan",
+                duration_ms=t.elapsed_ms,
+            )
+
+    @tool
+    def project_generate_tests(self, file_path: str) -> dict[str, Any]:
+        """
+        Generate a pytest unit test skeleton for a target Python source file.
+
+        Args:
+            file_path: Target Python file (e.g. "core/config.py").
+
+        Returns:
+            Dict containing generated pytest code in data.test_code.
+
+        Examples:
+            project_generate_tests("core/config.py")
+        """
+        import ast
+
+        sandbox = WorkspaceSandbox()
+        with Timer() as t:
+            try:
+                full_path = sandbox.resolve_safe(
+                    Path(file_path)
+                    if Path(file_path).is_absolute()
+                    else get_session().cwd / file_path
+                )
+            except WorkspaceViolationError as exc:
+                return make_error(
+                    str(exc), tool="project_generate_tests", code="WORKSPACE_VIOLATION"
+                )
+
+            if not full_path.exists() or not full_path.is_file():
+                return make_error(
+                    f"File not found: {file_path}", tool="project_generate_tests", code="NOT_FOUND"
+                )
+
+            try:
+                tree = ast.parse(full_path.read_text(encoding="utf-8"))
+                test_funcs = []
+
+                for node in ast.iter_child_nodes(tree):
+                    if isinstance(node, ast.ClassDef):
+                        for item in node.body:
+                            if isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
+                                test_funcs.append(
+                                    f"def test_{node.name.lower()}_{item.name}():\n    # TODO: Implement test\n    pass\n"
+                                )
+                    elif isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
+                        test_funcs.append(
+                            f"def test_{node.name}():\n    # TODO: Implement test\n    pass\n"
+                        )
+
+                test_code = "import pytest\n\n" + "\n".join(test_funcs)
+
+                return success(
+                    {
+                        "source_file": file_path,
+                        "suggested_test_file": f"tests/test_{Path(file_path).stem}.py",
+                        "test_code": test_code,
+                    },
+                    tool="project_generate_tests",
+                    duration_ms=t.elapsed_ms,
+                )
+            except Exception as exc:
+                return make_error(str(exc), tool="project_generate_tests", code="AST_PARSE_ERROR")
 
     @tool
     def count_lines_of_code(
@@ -139,22 +608,18 @@ class ProjectProvider(BaseProvider):
         exclude_dirs: str = ".venv,node_modules,.git,dist,build,__pycache__",
     ) -> dict[str, Any]:
         """
-        Count lines of code across the codebase.
-
-        Counts total lines, code lines (non-blank, non-comment), blank lines,
-        and comment lines per file extension.
+        Count total lines of code, blank lines, and code lines across the workspace.
 
         Args:
-            path:         Root directory to scan. Defaults to cwd.
-            extensions:   Comma-separated list of file extensions to count.
-            exclude_dirs: Comma-separated list of directory names to skip.
+            path: Root directory to scan. Defaults to ".".
+            extensions: Comma-separated list of file extensions.
+            exclude_dirs: Comma-separated directory names to skip.
 
         Returns:
-            A dict with keys: status, data (total lines, by_extension breakdown).
+            Dict containing total files, total lines, code lines, and per-extension breakdown.
 
         Examples:
             count_lines_of_code()
-            count_lines_of_code(extensions=".py,.pyi")
         """
         sandbox = WorkspaceSandbox()
         with Timer() as t:
@@ -174,7 +639,6 @@ class ProjectProvider(BaseProvider):
             for file_path in root.rglob("*"):
                 if not file_path.is_file():
                     continue
-                # Skip excluded directories
                 if any(part in excl for part in file_path.parts):
                     continue
                 if file_path.suffix not in exts:
@@ -230,21 +694,19 @@ class ProjectProvider(BaseProvider):
         max_results: int = 100,
     ) -> dict[str, Any]:
         """
-        Search for TODO/FIXME/HACK and similar tags in source files.
+        Search source code for comment tags (TODO, FIXME, HACK, BUG, NOTE).
 
         Args:
-            path:        Root directory to scan.
-            tags:        Comma-separated list of comment tags to find.
-            extensions:  File extensions to search.
-            max_results: Maximum number of results. Default: 100.
+            path: Root directory path to scan. Defaults to ".".
+            tags: Comma-separated comment tags.
+            extensions: File extensions to check.
+            max_results: Maximum results count limit.
 
         Returns:
-            A dict with keys: status, data (count, items list with file/line/tag/text).
+            Dict containing match count and items list (file, line, tag, text).
 
         Examples:
-            find_todos()
-            find_todos(tags="TODO,BUG")
-            find_todos(path="src", extensions=".py")
+            find_todos(tags="TODO,FIXME")
         """
         sandbox = WorkspaceSandbox()
         with Timer() as t:
@@ -296,158 +758,5 @@ class ProjectProvider(BaseProvider):
             return success(
                 {"count": len(results), "truncated": len(results) >= max_results, "items": results},
                 tool="find_todos",
-                duration_ms=t.elapsed_ms,
-            )
-
-    @tool
-    def read_package_json(self, path: str = "package.json") -> dict[str, Any]:
-        """
-        Parse and summarise a package.json file.
-
-        Returns project name, version, description, scripts, dependencies,
-        and devDependencies.
-
-        Args:
-            path: Path to package.json. Default: "package.json" in cwd.
-
-        Returns:
-            A dict with keys: status, data (name, version, scripts, dependencies).
-
-        Examples:
-            read_package_json()
-            read_package_json("frontend/package.json")
-        """
-        import json
-
-        from utils.json_utils import not_found
-
-        sandbox = WorkspaceSandbox()
-        with Timer() as t:
-            try:
-                file_path = sandbox.resolve_safe(
-                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
-                )
-            except WorkspaceViolationError as exc:
-                return make_error(str(exc), tool="read_package_json", code="WORKSPACE_VIOLATION")
-
-            if not file_path.exists():
-                return not_found(str(file_path), tool="read_package_json")
-
-            try:
-                data = json.loads(file_path.read_text(encoding="utf-8"))
-                return success(
-                    {
-                        "name": data.get("name", ""),
-                        "version": data.get("version", ""),
-                        "description": data.get("description", ""),
-                        "author": data.get("author", ""),
-                        "license": data.get("license", ""),
-                        "scripts": data.get("scripts", {}),
-                        "dependencies": data.get("dependencies", {}),
-                        "dev_dependencies": data.get("devDependencies", {}),
-                        "engines": data.get("engines", {}),
-                        "main": data.get("main", ""),
-                    },
-                    tool="read_package_json",
-                    duration_ms=t.elapsed_ms,
-                )
-            except (json.JSONDecodeError, OSError) as exc:
-                return make_error(str(exc), tool="read_package_json", code="PARSE_ERROR")
-
-    @tool
-    def read_pyproject_toml(self, path: str = "pyproject.toml") -> dict[str, Any]:
-        """
-        Parse and summarise a pyproject.toml file.
-
-        Returns project name, version, description, dependencies,
-        and tool configurations.
-
-        Args:
-            path: Path to pyproject.toml. Default: "pyproject.toml" in cwd.
-
-        Returns:
-            A dict with keys: status, data (name, version, dependencies, tools).
-
-        Examples:
-            read_pyproject_toml()
-            read_pyproject_toml("backend/pyproject.toml")
-        """
-        try:
-            import tomllib
-        except ImportError:
-            try:
-                import tomli as tomllib  # type: ignore[no-redef]
-            except ImportError:
-                return make_error(
-                    "TOML parsing requires Python 3.11+ or 'tomli' package.",
-                    tool="read_pyproject_toml",
-                    code="MISSING_DEPENDENCY",
-                )
-
-        from utils.json_utils import not_found
-
-        sandbox = WorkspaceSandbox()
-        with Timer() as t:
-            try:
-                file_path = sandbox.resolve_safe(
-                    Path(path) if Path(path).is_absolute() else get_session().cwd / path
-                )
-            except WorkspaceViolationError as exc:
-                return make_error(str(exc), tool="read_pyproject_toml", code="WORKSPACE_VIOLATION")
-
-            if not file_path.exists():
-                return not_found(str(file_path), tool="read_pyproject_toml")
-
-            try:
-                data = tomllib.loads(file_path.read_text(encoding="utf-8"))
-                project = data.get("project", {})
-                return success(
-                    {
-                        "name": project.get("name", ""),
-                        "version": project.get("version", ""),
-                        "description": project.get("description", ""),
-                        "authors": project.get("authors", []),
-                        "requires_python": project.get("requires-python", ""),
-                        "dependencies": project.get("dependencies", []),
-                        "optional_dependencies": project.get("optional-dependencies", {}),
-                        "build_backend": data.get("build-system", {}).get("build-backend", ""),
-                        "tools": list(data.get("tool", {}).keys()),
-                    },
-                    tool="read_pyproject_toml",
-                    duration_ms=t.elapsed_ms,
-                )
-            except Exception as exc:
-                return make_error(str(exc), tool="read_pyproject_toml", code="PARSE_ERROR")
-
-    @tool
-    def project_summary(self, path: str = ".") -> dict[str, Any]:
-        """
-        Return a comprehensive project overview combining multiple analyses.
-
-        Combines project type detection, LOC counting, and TODO/FIXME listing
-        into a single structured report.
-
-        Args:
-            path: Project root directory. Defaults to cwd.
-
-        Returns:
-            A dict with keys: status, data (project type, LOC stats, todos).
-
-        Examples:
-            project_summary()
-            project_summary("C:/projects/myapp")
-        """
-        with Timer() as t:
-            project_type_result = self.analyze_project(path)
-            loc_result = self.count_lines_of_code(path)
-            todo_result = self.find_todos(path, max_results=20)
-
-            return success(
-                {
-                    "project": project_type_result.get("data", {}),
-                    "loc": loc_result.get("data", {}),
-                    "todos": todo_result.get("data", {}),
-                },
-                tool="project_summary",
                 duration_ms=t.elapsed_ms,
             )

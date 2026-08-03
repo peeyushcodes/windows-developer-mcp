@@ -30,13 +30,13 @@ import re
 class Category(StrEnum):
     """Semantic grouping for dangerous commands."""
 
-    DESTRUCTIVE = "destructive"           # Permanently destroys data or system state
-    SYSTEM_MODIFY = "system_modify"       # Modifies OS-level configuration
-    PRIVILEGE_ESCALATION = "priv_esc"     # Attempts to gain elevated privileges
-    NETWORK_ATTACK = "network_attack"     # Could be used for network-based attacks
+    DESTRUCTIVE = "destructive"  # Permanently destroys data or system state
+    SYSTEM_MODIFY = "system_modify"  # Modifies OS-level configuration
+    PRIVILEGE_ESCALATION = "priv_esc"  # Attempts to gain elevated privileges
+    NETWORK_ATTACK = "network_attack"  # Could be used for network-based attacks
     REGISTRY_MODIFY = "registry_modify"  # Modifies the Windows registry
     PROCESS_CONTROL = "process_control"  # Kills or manipulates other processes
-    CREDENTIAL_ACCESS = "cred_access"    # Access or modifies credentials/accounts
+    CREDENTIAL_ACCESS = "cred_access"  # Access or modifies credentials/accounts
 
 
 class Severity(StrEnum):
@@ -163,7 +163,6 @@ DANGEROUS_PATTERNS: tuple[DangerousPattern, ...] = (
         severity=Severity.HIGH,
         description="Wipes free space (cipher /w) — cannot be undone.",
     ),
-
     # -----------------------------------------------------------------------
     # SYSTEM_MODIFY — OS-level configuration changes
     # -----------------------------------------------------------------------
@@ -230,7 +229,6 @@ DANGEROUS_PATTERNS: tuple[DangerousPattern, ...] = (
         severity=Severity.HIGH,
         description="Executes dynamic PowerShell expressions (Invoke-Expression / iex).",
     ),
-
     # -----------------------------------------------------------------------
     # REGISTRY_MODIFY — Windows registry manipulation
     # -----------------------------------------------------------------------
@@ -255,7 +253,6 @@ DANGEROUS_PATTERNS: tuple[DangerousPattern, ...] = (
         severity=Severity.HIGH,
         description="Deletes a value from the HKLM registry hive.",
     ),
-
     # -----------------------------------------------------------------------
     # PRIVILEGE_ESCALATION — Gaining elevated access
     # -----------------------------------------------------------------------
@@ -287,7 +284,6 @@ DANGEROUS_PATTERNS: tuple[DangerousPattern, ...] = (
         severity=Severity.HIGH,
         description="Modifies access control lists (ACLs).",
     ),
-
     # -----------------------------------------------------------------------
     # CREDENTIAL_ACCESS — Account and credential manipulation
     # -----------------------------------------------------------------------
@@ -305,7 +301,6 @@ DANGEROUS_PATTERNS: tuple[DangerousPattern, ...] = (
         severity=Severity.CRITICAL,
         description="Changes a user account password.",
     ),
-
     # -----------------------------------------------------------------------
     # PROCESS_CONTROL — Terminating other processes
     # -----------------------------------------------------------------------
@@ -333,9 +328,7 @@ DANGEROUS_PATTERNS: tuple[DangerousPattern, ...] = (
 )
 
 # Pre-compiled: critical and high severity patterns that are never overridable.
-_NON_OVERRIDABLE_SEVERITIES: frozenset[Severity] = frozenset(
-    {Severity.CRITICAL, Severity.HIGH}
-)
+_NON_OVERRIDABLE_SEVERITIES: frozenset[Severity] = frozenset({Severity.CRITICAL, Severity.HIGH})
 
 
 def get_patterns() -> tuple[DangerousPattern, ...]:

@@ -18,6 +18,7 @@ Usage::
 
 from __future__ import annotations
 
+from enum import StrEnum
 import logging
 import os
 from pathlib import Path
@@ -40,11 +41,30 @@ _config: AppConfig | None = None
 # ==============================================================================
 
 
+class ServerProfile(StrEnum):
+    """Execution profile controlling tool exposure to LLMs."""
+
+    MINIMAL = "minimal"
+    DEVELOPER = "developer"
+    FULL = "full"
+
+
 class ServerConfig(BaseModel):
     """Top-level server identity settings."""
 
     name: str = "Windows Developer MCP"
     version: str = "0.1.0"
+    profile: ServerProfile = ServerProfile.DEVELOPER
+
+    @field_validator("profile", mode="before")
+    @classmethod
+    def _coerce_profile(cls, v: Any) -> ServerProfile:
+        if isinstance(v, str):
+            v_lower = v.lower()
+            for p in ServerProfile:
+                if p.value == v_lower:
+                    return p
+        return ServerProfile.DEVELOPER
 
 
 class WorkspaceConfig(BaseModel):
@@ -152,7 +172,7 @@ class AppConfig(BaseModel):
             if not key.startswith(prefix):
                 continue
             # MCP_SECURITY__TIMEOUT → ["security", "timeout"]
-            parts = key[len(prefix):].lower().split("__")
+            parts = key[len(prefix) :].lower().split("__")
             if len(parts) == 2:
                 section, field = parts
                 section_model = getattr(self, section, None)
@@ -164,9 +184,7 @@ class AppConfig(BaseModel):
                         updated = section_model.__class__.model_validate(current_data)
                         object.__setattr__(self, section, updated)
                     except Exception:
-                        logger.warning(
-                            "Failed to apply env override %s=%r", key, value
-                        )
+                        logger.warning("Failed to apply env override %s=%r", key, value)
         return self
 
 
