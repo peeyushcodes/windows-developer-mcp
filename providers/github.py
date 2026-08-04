@@ -91,13 +91,20 @@ class GitHubProvider(BaseProvider):
     @tool
     def github_auth_status(self) -> dict[str, Any]:
         """
-        Check GitHub authentication status and token validity.
+        Check GitHub API authentication status and validate the configured token.
 
-        Returns whether a token is configured and (if so) the authenticated
-        user's login name.
+        Reads the GITHUB_TOKEN or GH_TOKEN environment variable and, if present,
+        calls the /user endpoint to confirm the token is valid and return the
+        authenticated user's profile. Safe to call at any time — no side effects.
 
         Returns:
-            A dict with keys: status, data (authenticated, token_present, user).
+            A dict with keys: status, data.authenticated (bool),
+            data.token_present (bool), data.user (login name or None),
+            data.name, data.email, data.message (guidance if unauthenticated).
+
+        Note:
+            Without a token, all GitHub tools are rate-limited to 60 req/hour.
+            With a token, the limit is 5,000 req/hour.
 
         Examples:
             github_auth_status()
@@ -141,10 +148,15 @@ class GitHubProvider(BaseProvider):
     @tool
     def github_rate_limit(self) -> dict[str, Any]:
         """
-        Check the current GitHub API rate limit status.
+        Return the current GitHub API rate limit status for all resource types.
+
+        Reports remaining requests and reset times for core, search, and graphql
+        limits. Works without authentication (unauthenticated limits are lower).
+        No side effects — read-only call.
 
         Returns:
-            A dict with keys: status, data (core, search, and graphql limits).
+            A dict with keys: status, data.core, data.search, data.graphql.
+            Each contains: limit, remaining, reset (Unix timestamp), used.
 
         Examples:
             github_rate_limit()
@@ -172,14 +184,25 @@ class GitHubProvider(BaseProvider):
     @tool
     def github_repo_info(self, owner: str, repo: str) -> dict[str, Any]:
         """
-        Return metadata for a GitHub repository.
+        Return metadata for a public or accessible GitHub repository.
+
+        Fetches repository details via the GitHub REST API. No authentication
+        required for public repositories (subject to 60 req/hour unauthenticated
+        rate limit). Private repositories require GITHUB_TOKEN with repo scope.
 
         Args:
-            owner: The repository owner (user or org).
-            repo:  The repository name.
+            owner: The repository owner (GitHub username or organisation name).
+            repo:  The repository name (case-insensitive).
 
         Returns:
-            A dict with keys: status, data (name, description, stars, forks, etc.).
+            A dict with keys: status, data containing: full_name, description,
+            stars, forks, open_issues, language, license, default_branch,
+            url, clone_url, private, archived, created_at, updated_at,
+            pushed_at, topics.
+
+        Raises:
+            error: If the repository does not exist, is inaccessible, or the
+                   API rate limit is exceeded.
 
         Examples:
             github_repo_info("microsoft", "vscode")
@@ -224,21 +247,28 @@ class GitHubProvider(BaseProvider):
         limit: int = 10,
     ) -> dict[str, Any]:
         """
-        Search GitHub repositories.
+        Search GitHub repositories using the GitHub search API.
+
+        Supports GitHub search qualifiers (language:, stars:, topic:, org:, etc.).
+        Results are sorted by stars by default. No authentication required but
+        subject to the search rate limit (10 req/min unauthenticated, 30 with token).
 
         Args:
-            query: GitHub search query (supports qualifiers like language:python).
-            sort:  Sort field — "stars", "forks", "updated". Default: "stars".
-            order: Sort order — "asc" or "desc". Default: "desc".
-            limit: Maximum results (1–30). Default: 10.
+            query: GitHub search query string. Supports qualifiers such as
+                   "language:python", "stars:>100", "topic:mcp".
+            sort:  Sort field. One of: "stars" (default), "forks", "updated".
+            order: Sort direction. One of: "desc" (default), "asc".
+            limit: Maximum number of results to return. Range: 1–30. Default: 10.
 
         Returns:
-            A dict with keys: status, data (total_count, items list).
+            A dict with keys: status, data.query, data.total_count (GitHub total),
+            data.returned (actual items returned), data.items (list of repos with
+            full_name, description, stars, language, url, updated_at).
 
         Examples:
             github_search_repos("mcp server windows")
-            github_search_repos("language:python fastmcp")
-            github_search_repos("topic:ai-assistant stars:>100")
+            github_search_repos("language:python fastmcp", sort="updated")
+            github_search_repos("topic:ai-assistant stars:>100", limit=5)
         """
         limit = max(1, min(limit, 30))
         with Timer() as t:
@@ -285,21 +315,26 @@ class GitHubProvider(BaseProvider):
         label: str = "",
     ) -> dict[str, Any]:
         """
-        List issues for a GitHub repository.
+        List issues for a GitHub repository, optionally filtered by state or label.
+
+        Pull requests are automatically excluded from results (GitHub API returns
+        PRs alongside issues; this tool filters them out). Read-only — no side effects.
 
         Args:
-            owner:  Repository owner.
+            owner:  Repository owner (GitHub username or org).
             repo:   Repository name.
-            state:  Issue state — "open", "closed", or "all". Default: "open".
-            limit:  Maximum issues to return (1–100). Default: 20.
-            label:  Filter by label name.
+            state:  Filter by issue state. One of: "open" (default), "closed", "all".
+            limit:  Maximum issues to return. Range: 1–100. Default: 20.
+            label:  Filter by a single label name (exact match, case-sensitive).
 
         Returns:
-            A dict with keys: status, data (count, issues list).
+            A dict with keys: status, data.count, data.issues (list with number,
+            title, state, author, labels, created_at, updated_at, url, comments).
 
         Examples:
             github_list_issues("microsoft", "vscode")
             github_list_issues("python", "cpython", state="closed", limit=5)
+            github_list_issues("me", "my-repo", label="bug")
         """
         limit = max(1, min(limit, 100))
         with Timer() as t:
@@ -335,18 +370,27 @@ class GitHubProvider(BaseProvider):
     @tool
     def github_get_issue(self, owner: str, repo: str, number: int) -> dict[str, Any]:
         """
-        Get a specific GitHub issue by number.
+        Get the full details of a specific GitHub issue by number.
+
+        Returns the issue title, body, state, labels, assignees, milestone,
+        and comment count. Read-only — no side effects.
 
         Args:
-            owner:  Repository owner.
+            owner:  Repository owner (GitHub username or org).
             repo:   Repository name.
-            number: Issue number.
+            number: The issue number (visible in the GitHub issue URL).
 
         Returns:
-            A dict with keys: status, data (issue details including body).
+            A dict with keys: status, data containing: number, title, body,
+            state, author, assignees, labels, milestone, created_at,
+            updated_at, comments, url.
+
+        Raises:
+            error: If the issue does not exist or the repo is inaccessible.
 
         Examples:
             github_get_issue("microsoft", "vscode", 12345)
+            github_get_issue("python", "cpython", 99)
         """
         with Timer() as t:
             try:
@@ -385,24 +429,32 @@ class GitHubProvider(BaseProvider):
         confirm: bool = False,
     ) -> dict[str, Any]:
         """
-        Create a new GitHub issue.
+        Create a new issue in a GitHub repository.
 
-        Requires a GITHUB_TOKEN with issue write permissions and explicit
-        confirmation when required by config.
+        DESTRUCTIVE: Creates a persistent issue on GitHub. Requires a GITHUB_TOKEN
+        with at least 'issues: write' scope. Will prompt for confirmation when
+        require_confirmation is enabled in config.
 
         Args:
-            owner:  Repository owner.
-            repo:   Repository name.
-            title:  Issue title.
-            body:   Issue body (Markdown supported).
-            labels: Comma-separated label names.
-            confirm: Set to True to confirm.
+            owner:   Repository owner (GitHub username or org).
+            repo:    Repository name.
+            title:   Issue title (required, non-empty string).
+            body:    Issue body text. Markdown is supported. Default: empty.
+            labels:  Comma-separated label names to apply (e.g. "bug,help wanted").
+                     Labels must already exist in the repository.
+            confirm: Set to True to confirm this write operation.
 
         Returns:
-            A dict with keys: status, data (issue number, url).
+            A dict with keys: status, data.number, data.title, data.url, data.state.
+
+        Raises:
+            error: If GITHUB_TOKEN is missing, the repo is inaccessible, or
+                   any label name does not exist.
 
         Examples:
             github_create_issue("me", "my-repo", "Bug: login broken", confirm=True)
+            github_create_issue("me", "my-repo", "Feature request",
+                                body="Details here", labels="enhancement", confirm=True)
         """
         from core.exceptions import ConfirmationRequiredError
         from security.permissions import PermissionManager
@@ -460,20 +512,26 @@ class GitHubProvider(BaseProvider):
         limit: int = 20,
     ) -> dict[str, Any]:
         """
-        List pull requests for a repository.
+        List pull requests for a GitHub repository, filtered by state.
+
+        Returns PR metadata including draft status, base/head branch names,
+        and merge readiness. Pull requests are returned in reverse chronological
+        order. Read-only — no side effects.
 
         Args:
-            owner: Repository owner.
+            owner: Repository owner (GitHub username or org).
             repo:  Repository name.
-            state: "open", "closed", or "all". Default: "open".
-            limit: Maximum PRs to return (1–100). Default: 20.
+            state: Filter by PR state. One of: "open" (default), "closed", "all".
+            limit: Maximum PRs to return. Range: 1–100. Default: 20.
 
         Returns:
-            A dict with keys: status, data (count, prs list).
+            A dict with keys: status, data.count, data.prs (list with number,
+            title, state, author, base, head, draft, created_at,
+            updated_at, url, mergeable).
 
         Examples:
             github_list_prs("microsoft", "vscode")
-            github_list_prs("python", "cpython", state="closed")
+            github_list_prs("python", "cpython", state="closed", limit=5)
         """
         limit = max(1, min(limit, 100))
         with Timer() as t:
@@ -509,18 +567,28 @@ class GitHubProvider(BaseProvider):
     @tool
     def github_get_pr(self, owner: str, repo: str, number: int) -> dict[str, Any]:
         """
-        Get a specific pull request by number.
+        Get full details of a specific pull request by number.
+
+        Returns the PR body, diff stats (additions, deletions, changed_files),
+        commit count, merge status, and branch information. Read-only — no
+        side effects.
 
         Args:
-            owner:  Repository owner.
+            owner:  Repository owner (GitHub username or org).
             repo:   Repository name.
-            number: PR number.
+            number: The pull request number (visible in the PR URL).
 
         Returns:
-            A dict with keys: status, data (full PR details including body, diff stats).
+            A dict with keys: status, data containing: number, title, body,
+            state, author, base, head, draft, merged, mergeable, additions,
+            deletions, changed_files, commits, created_at, url.
+
+        Raises:
+            error: If the PR does not exist or the repo is inaccessible.
 
         Examples:
             github_get_pr("microsoft", "vscode", 200000)
+            github_get_pr("me", "my-repo", 1)
         """
         with Timer() as t:
             try:
@@ -557,15 +625,22 @@ class GitHubProvider(BaseProvider):
     @tool
     def github_list_releases(self, owner: str, repo: str, limit: int = 10) -> dict[str, Any]:
         """
-        List releases for a repository.
+        List published releases for a GitHub repository.
+
+        Returns release metadata including tag names, draft/prerelease status,
+        and asset counts. Read-only — no side effects.
 
         Args:
-            owner: Repository owner.
+            owner: Repository owner (GitHub username or org).
             repo:  Repository name.
-            limit: Maximum releases to return (1–30). Default: 10.
+            limit: Maximum releases to return. Range: 1–30. Default: 10.
 
         Returns:
-            A dict with keys: status, data (count, releases list).
+            A dict with keys: status, data.count, data.releases (list with
+            tag_name, name, draft, prerelease, published_at, url, assets count).
+
+        Raises:
+            error: If the repository does not exist or is inaccessible.
 
         Examples:
             github_list_releases("microsoft", "vscode")

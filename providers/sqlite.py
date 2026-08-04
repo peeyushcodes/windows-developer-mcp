@@ -68,13 +68,23 @@ class SQLiteProvider(BaseProvider):
     @tool
     def sqlite_list_tables(self, database: str) -> dict[str, Any]:
         """
-        List all tables in a SQLite database file.
+        List all tables and views in a SQLite database file.
+
+        Read-only operation — no side effects. The database path is resolved
+        relative to the current session working directory and must remain within
+        the workspace boundary.
 
         Args:
-            database: Path to the .db or .sqlite file.
+            database: Path to the SQLite database file (.db, .sqlite, or .sqlite3).
+                      Can be relative to the current working directory or absolute.
 
         Returns:
-            A dict with keys: status, data (tables list, count).
+            A dict with keys: status, data.database (resolved path), data.count,
+            data.tables (list of {name, type} where type is 'table' or 'view').
+
+        Raises:
+            error: If the file does not exist, is not a valid SQLite database,
+                   or the path is outside the workspace boundary.
 
         Examples:
             sqlite_list_tables("app.db")
@@ -111,14 +121,21 @@ class SQLiteProvider(BaseProvider):
     @tool
     def sqlite_schema(self, database: str, table: str = "") -> dict[str, Any]:
         """
-        Return the CREATE statement(s) for tables in a database.
+        Return the CREATE statement(s) for one or all tables in a database.
+
+        Useful for understanding the database schema before writing queries.
+        Read-only — no side effects. Path is workspace-sandboxed.
 
         Args:
-            database: Path to the database file.
-            table:    Specific table name. Leave empty to show all tables.
+            database: Path to the SQLite database file.
+            table:    Optional table name to show a single CREATE statement.
+                      Leave empty (default) to show CREATE statements for all
+                      tables and views in the database.
 
         Returns:
-            A dict with keys: status, data (schema strings).
+            A dict with keys: status, data.database, data.table ('all' if not
+            specified), data.schemas (list of CREATE strings), data.schema_text
+            (all schemas joined by double newlines).
 
         Examples:
             sqlite_schema("app.db")
@@ -163,17 +180,25 @@ class SQLiteProvider(BaseProvider):
     @tool
     def sqlite_table_info(self, database: str, table: str) -> dict[str, Any]:
         """
-        Return column definitions for a specific table.
+        Return column definitions (name, type, nullable, default, PK) for a table.
+
+        Equivalent to running `PRAGMA table_info(<table>)`. Read-only — no side
+        effects. Useful to inspect schema before constructing INSERT/UPDATE queries.
 
         Args:
-            database: Path to the database file.
-            table:    The table name to inspect.
+            database: Path to the SQLite database file.
+            table:    The exact table name to inspect (case-sensitive).
 
         Returns:
-            A dict with keys: status, data (columns list with name/type/nullable/default).
+            A dict with keys: status, data.database, data.table, data.column_count,
+            data.columns (list of {cid, name, type, not_null, default, primary_key}).
+
+        Raises:
+            error: If the table does not exist or the database file is not found.
 
         Examples:
             sqlite_table_info("app.db", "users")
+            sqlite_table_info("data.sqlite", "orders")
         """
         sandbox = WorkspaceSandbox()
         with Timer() as t:
@@ -226,16 +251,27 @@ class SQLiteProvider(BaseProvider):
         """
         Execute a read-only SELECT query against a SQLite database.
 
-        Only SELECT statements are allowed. Use sqlite_execute for writes.
+        Only SELECT statements are permitted; attempting any write keyword
+        (INSERT, UPDATE, DELETE, etc.) returns an error. Use sqlite_execute
+        for write operations. Supports parameterised queries to prevent
+        SQL injection. Path is workspace-sandboxed.
 
         Args:
-            database: Path to the database file.
-            sql:      The SELECT query to execute.
-            params:   Optional query parameters (for parameterised queries).
-            max_rows: Maximum rows to return (1–5000). Default: 500.
+            database: Path to the SQLite database file.
+            sql:      A SELECT statement to execute. Must start with SELECT.
+            params:   Optional list of positional parameters for ? placeholders
+                      (e.g. ["value1", 42]). Default: None (no parameters).
+            max_rows: Maximum rows to return. Range: 1–5000. Default: 500.
+                      Results are truncated with data.truncated=True if exceeded.
 
         Returns:
-            A dict with keys: status, data (columns, rows, count, truncated).
+            A dict with keys: status, data.database, data.sql, data.columns
+            (list of column names), data.count, data.truncated (bool), data.rows
+            (list of row dicts).
+
+        Raises:
+            error: If the SQL is not a SELECT, the database is not found, or
+                   a SQLite error occurs.
 
         Examples:
             sqlite_query("app.db", "SELECT * FROM users LIMIT 10")
@@ -294,24 +330,37 @@ class SQLiteProvider(BaseProvider):
         confirm: bool = False,
     ) -> dict[str, Any]:
         """
-        Execute any SQL statement against a SQLite database.
+        Execute any SQL statement (SELECT or write) against a SQLite database.
 
-        Write operations (INSERT, UPDATE, DELETE, CREATE, DROP, etc.) require
-        explicit confirmation.
+        DESTRUCTIVE for write operations: INSERT, UPDATE, DELETE, CREATE, DROP,
+        ALTER, and TRUNCATE statements permanently modify the database. These
+        require explicit confirmation when require_confirmation is enabled.
+        Supports parameterised queries to prevent SQL injection.
+        The database file path is workspace-sandboxed.
+
+        Note:
+            For read-only queries, prefer sqlite_query which is safer and more
+            explicit. This tool will CREATE the database file if it does not
+            exist and the statement is a write operation.
 
         Args:
-            database: Path to the database file.
-            sql:      The SQL statement to execute.
-            params:   Optional query parameters.
-            confirm:  Set to True to confirm write operations.
+            database: Path to the SQLite database file.
+            sql:      Any valid SQL statement.
+            params:   Optional list of positional parameters for ? placeholders.
+            confirm:  Set to True to confirm write operations when required.
 
         Returns:
-            A dict with keys: status, data (rows_affected, lastrowid for writes;
-            columns/rows/count for SELECTs).
+            For SELECT: data.columns, data.count, data.rows.
+            For writes: data.rows_affected, data.lastrowid.
+
+        Raises:
+            error: On SQLite syntax errors, constraint violations, or workspace
+                   boundary violations.
 
         Examples:
             sqlite_execute("app.db", "SELECT * FROM users")
             sqlite_execute("app.db", "INSERT INTO users (name) VALUES (?)", params=["Alice"], confirm=True)
+            sqlite_execute("app.db", "DROP TABLE temp_data", confirm=True)
         """
         from core.exceptions import ConfirmationRequiredError
         from security.permissions import PermissionManager
@@ -372,17 +421,26 @@ class SQLiteProvider(BaseProvider):
     @tool
     def sqlite_databases(self, search_path: str = ".") -> dict[str, Any]:
         """
-        Search for SQLite database files within the workspace.
+        Discover SQLite database files within a directory tree.
+
+        Recursively searches for files with .db, .sqlite, and .sqlite3
+        extensions. Search is constrained to the workspace boundary.
+        Read-only — no side effects.
 
         Args:
-            search_path: Directory to search. Defaults to the current working directory.
+            search_path: Directory to search recursively. Default: "." (current
+                         working directory). Can be absolute or relative to cwd.
 
         Returns:
-            A dict with keys: status, data (count, databases list with path/size).
+            A dict with keys: status, data.count, data.databases (list of
+            {path, name, size_bytes} for each database found).
+
+        Raises:
+            error: If the search path is outside the workspace boundary.
 
         Examples:
             sqlite_databases()
-            sqlite_databases("C:/projects")
+            sqlite_databases("C:/projects/myapp")
         """
         sandbox = WorkspaceSandbox()
         with Timer() as t:

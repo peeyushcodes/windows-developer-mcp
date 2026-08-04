@@ -34,11 +34,25 @@ class BrowserProvider(BaseProvider):
         """
         Open a URL in the default system web browser.
 
+        Launches the OS default browser (e.g. Chrome, Edge) as a side effect.
+        The browser opens in a new window or tab; this tool does not wait
+        for the page to load or the browser to close.
+
         Args:
-            url: The HTTP or HTTPS URL to open.
+            url: The full HTTP or HTTPS URL to open (e.g. "https://example.com").
+                 Only http:// and https:// schemes are accepted; ftp://, file://,
+                 and other schemes are rejected.
 
         Returns:
-            Standard success or error response dictionary.
+            A dict with keys: status ("success"/"error"), data.url, data.opened (bool).
+
+        Raises:
+            error: If the URL scheme is not http/https, or if the OS reports
+                   no default browser is configured.
+
+        Examples:
+            open_url("https://docs.python.org")
+            open_url("https://github.com/peeyushcodes/windows-developer-mcp")
         """
         if not url.startswith(("http://", "https://")):
             return make_error(
@@ -58,14 +72,27 @@ class BrowserProvider(BaseProvider):
     @tool
     def fetch_page(self, url: str, timeout: int = 30) -> dict[str, Any]:
         """
-        Fetch static web page content over HTTP/HTTPS.
+        Fetch the raw HTML/text content of a web page over HTTP/HTTPS.
+
+        Follows redirects automatically. Returns up to 50,000 characters of
+        response body. Does NOT execute JavaScript — use a headless browser
+        for JS-rendered pages. Makes a real outbound network request.
 
         Args:
-            url: The URL to fetch.
-            timeout: Request timeout in seconds (default: 30).
+            url:     The full HTTP or HTTPS URL to fetch.
+            timeout: Request timeout in seconds. Default: 30. Range: 1–120.
 
         Returns:
-            Dictionary with status code, response headers, and content snippet.
+            A dict with keys: status, data.url (final URL after redirects),
+            data.status_code, data.headers, data.content (up to 50 000 chars),
+            data.content_length (total chars before truncation).
+
+        Raises:
+            error: On network failure, DNS error, or invalid URL scheme.
+
+        Examples:
+            fetch_page("https://example.com")
+            fetch_page("https://api.github.com", timeout=10)
         """
         if not url.startswith(("http://", "https://")):
             return make_error(
@@ -94,16 +121,30 @@ class BrowserProvider(BaseProvider):
     @tool
     def extract_text(self, url: str, max_chars: int = 10000) -> dict[str, Any]:
         """
-        Fetch a web page and extract human-readable body text.
+        Fetch a web page and extract clean, human-readable body text.
 
-        Strips script, style, and HTML markup tags to produce clean text.
+        Strips <script>, <style>, HTML comments, and all remaining HTML tags
+        to produce plain text suitable for summarisation or search. Does NOT
+        execute JavaScript — dynamically rendered content will not appear.
+        Makes a real outbound network request.
 
         Args:
-            url: The URL to extract text from.
-            max_chars: Maximum characters of text to return (default: 10000).
+            url:       The full HTTP or HTTPS URL to extract text from.
+            max_chars: Maximum characters of extracted text to return.
+                       Default: 10 000. The full character count is always
+                       reported in data.character_count.
 
         Returns:
-            Dictionary with extracted page title and body text.
+            A dict with keys: status, data.url, data.status_code, data.title
+            (page <title>), data.text (extracted plain text), data.character_count
+            (total before truncation), data.is_truncated (bool).
+
+        Raises:
+            error: On network failure or invalid URL scheme.
+
+        Examples:
+            extract_text("https://en.wikipedia.org/wiki/Python")
+            extract_text("https://news.ycombinator.com", max_chars=5000)
         """
         if not url.startswith(("http://", "https://")):
             return make_error(
@@ -153,13 +194,26 @@ class BrowserProvider(BaseProvider):
     @tool
     def check_url(self, url: str) -> dict[str, Any]:
         """
-        Send an HTTP HEAD request to verify URL accessibility and inspect response headers.
+        Probe a URL with an HTTP HEAD request to verify accessibility and inspect headers.
+
+        Uses HEAD to avoid downloading the response body. Automatically falls
+        back to a GET request if the server does not support HEAD (405 or network
+        error). Makes a real outbound network request with a 15-second timeout.
 
         Args:
-            url: The URL to inspect.
+            url: The full HTTP or HTTPS URL to check.
 
         Returns:
-            Dictionary with status code, server header, content type, and length.
+            A dict with keys: status, data.url (final URL after redirects),
+            data.status_code, data.content_type, data.content_length,
+            data.server, data.is_success (bool, True for 2xx status codes).
+
+        Raises:
+            error: On network failure, DNS error, or invalid URL scheme.
+
+        Examples:
+            check_url("https://example.com")
+            check_url("https://github.com/peeyushcodes/windows-developer-mcp")
         """
         if not url.startswith(("http://", "https://")):
             return make_error(
