@@ -15,6 +15,7 @@
 ## ⚡ 1-Minute Quick Start
 
 ### Step 1: Install `uv`
+
 If you don't have `uv` installed, open PowerShell and run:
 
 ```powershell
@@ -24,6 +25,7 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ### Step 2: Configure Your AI Client
 
 #### 🤖 Claude Desktop Setup
+
 Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
@@ -47,6 +49,7 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 ```
 
 #### 💻 LM Studio / Local LLM Setup
+
 Edit your LM Studio MCP server configuration:
 
 ```json
