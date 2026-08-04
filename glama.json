@@ -1,5 +1,4 @@
 {
-  "$schema": "https://glama.ai/mcp/schema.json",
   "name": "windows-developer-mcp",
   "title": "Windows Developer MCP",
   "description": "Production-grade Windows Developer MCP Server providing terminal execution, git management, docker orchestration, filesystem security, system diagnostics, and AI project analysis optimized for both Glama quality and Local LLM context efficiency.",
