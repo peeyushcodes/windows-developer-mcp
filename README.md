@@ -1,3 +1,4 @@
+
 # Windows Developer MCP Server
 
 [![Glama Indexed](https://img.shields.io/badge/Glama-Indexed-blue.svg?style=for-the-badge&logo=glama)](https://glama.ai/mcp/servers)
