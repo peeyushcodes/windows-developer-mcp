@@ -112,16 +112,6 @@ reportMissingTypeStubs = false
 reportPrivateUsage = "warning"
 
 # ==============================================================================
-# Pyright — VS Code Pylance (reads [tool.pyright], NOT [tool.basedpyright])
-# ==============================================================================
-
-[tool.pyright]
-pythonVersion = "3.12"
-venvPath = "."
-venv = ".venv"
-typeCheckingMode = "off"
-
-# ==============================================================================
 # Pytest
 # ==============================================================================
 
