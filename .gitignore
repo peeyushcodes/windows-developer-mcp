@@ -104,3 +104,10 @@ desktop.ini
 ehthumbs.db
 Thumbs.db
 *.lnk
+
+# ==============================================================================
+# Local IDE / Editor overrides
+# ==============================================================================
+# pyrightconfig.json is a local VS Code/Pylance override.
+# CI uses [tool.basedpyright] in pyproject.toml instead.
+pyrightconfig.json
