@@ -1,6 +1,6 @@
 [project]
 name = "windows-developer-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "A production-grade Windows Developer MCP Server for LM Studio and other MCP-compatible AI clients"
 readme = "README.md"
 license = { text = "MIT" }

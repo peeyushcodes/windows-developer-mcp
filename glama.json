@@ -2,7 +2,7 @@
   "name": "windows-developer-mcp",
   "title": "Windows Developer MCP",
   "description": "Production-grade Windows Developer MCP Server providing terminal execution, git management, docker orchestration, filesystem security, system diagnostics, and AI project analysis optimized for both Glama quality and Local LLM context efficiency.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "homepage": "https://github.com/peeyushcodes/windows-developer-mcp",
   "repository": {
